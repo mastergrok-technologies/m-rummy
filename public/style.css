@@ -381,3 +381,26 @@ button.settings-option:disabled .settings-option-icon{opacity:.55}
 #game-dialog[data-panel=standings] .standings-footer button:focus-visible{outline-color:#b5ffd8}
 @media(max-width:700px){#game-dialog[data-panel=standings]{padding:20px 16px 0;border-radius:20px}#game-dialog[data-panel=standings] h2{font-size:26px}#game-dialog[data-panel=standings] .standings-table thead th{padding:12px 8px;font-size:10px}#game-dialog[data-panel=standings] .standings-table thead th:first-child{width:44px}#game-dialog[data-panel=standings] .standings-table thead th:nth-child(3){width:64px}#game-dialog[data-panel=standings] .standings-table thead th:last-child{width:76px}#game-dialog[data-panel=standings] .standings-table tbody :is(th,td){padding:12px 8px}.standing-player{gap:8px;align-items:flex-start}.standing-avatar{flex-basis:36px;width:36px;height:36px;font-size:18px}.standing-player-text>strong{font-size:12px}.standing-labels>span{font-size:8px;padding:2px 4px}#game-dialog[data-panel=standings] .standing-round,#game-dialog[data-panel=standings] .standing-total{font-size:14px}#game-dialog[data-panel=standings] .standings-footer{margin-left:-16px;margin-right:-16px;padding:16px;border-radius:0 0 18px 18px;gap:12px}}
 @media(max-width:450px){#game-dialog[data-panel=standings]{width:calc(100vw - 24px);max-height:calc(100dvh - 24px);padding:16px 12px 0}.standing-player{flex-direction:column;gap:6px}.standing-avatar{flex:0 0 32px;width:32px;height:32px}.standing-player-text>strong{font-size:11px}#game-dialog[data-panel=standings] .standings-table thead th:first-child{width:36px}#game-dialog[data-panel=standings] .standings-table thead th:nth-child(3){width:58px}#game-dialog[data-panel=standings] .standings-table thead th:last-child{width:64px}#game-dialog[data-panel=standings] .standings-table tbody :is(th,td){padding:12px 6px}#game-dialog[data-panel=standings] .standings-footer{margin-left:-12px;margin-right:-12px;padding:16px 12px;flex-wrap:wrap}.standings-footer .button{font-size:11px}.standings-summary{font-size:10px}.standings-summary strong{letter-spacing:.5px}#game-dialog[data-panel=standings] .standings-explainer{font-size:11px}}
+
+/* Local Figma 11:74211 / View Modal 11:74367: green hand inspection surface. */
+#game-dialog[data-panel=hand]{width:min(760px,calc(100vw - 32px));max-width:none;background:#117954;color:#f2f5f2;border:2px solid #85d0b6;border-radius:18px;padding:24px;scrollbar-color:#b5aeda #0d6345}
+#game-dialog[data-panel=hand] .dialog-head{align-items:center;gap:16px;margin-bottom:18px}
+#game-dialog[data-panel=hand] #game-panel-title{font:600 24px var(--sans);color:#fff;margin:0}
+#game-dialog[data-panel=hand] .dialog-head .eyebrow{color:#d4f0e6}
+#game-dialog[data-panel=hand] .dialog-head [data-close]{color:#fff;background:#0a563c;border:1px solid #85d0b6;border-radius:50%;width:44px;height:44px;flex:0 0 44px}
+.hand-view-summary{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;font-size:11px;color:#e1f4ea;letter-spacing:.3px}
+.hand-view-note{color:#e1f4ea;font-size:12px;line-height:1.7;margin:14px 0 20px}
+.hand-view-groups{display:grid;gap:16px}
+.hand-view-groups section{min-width:0;border:1px solid #85d0b6;border-radius:12px;padding:16px;background:#0d6345}
+.hand-view-group-heading{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:14px}
+.hand-view-group-heading h3{font:600 14px var(--sans);color:#fff;overflow-wrap:anywhere;margin:0}
+.hand-view-group-heading>span{font-size:11px;white-space:nowrap;color:#d4f0e6}
+.hand-view-groups .cards{display:grid;grid-template-columns:repeat(auto-fit,72px);gap:10px;justify-content:start}
+.hand-view-groups .card{width:72px;height:104px;cursor:default;margin:0;transform:none;box-shadow:0 3px 8px #002f2540}
+.hand-view-groups .card-corner{font-size:15px}.hand-view-groups .card-suit{font-size:30px}
+.hand-view-empty{font-size:14px;line-height:1.7;padding:24px 0;color:#fff}
+.hand-view-footer{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;border-top:1px solid #85d0b6;margin-top:24px;padding-top:18px}
+.hand-view-footer>span{font-size:12px;line-height:1.6;color:#e1f4ea}
+.hand-view-footer .button{background:#f2f5f2;color:#083827;min-height:44px;border:1px solid #fff}
+#game-dialog[data-panel=hand] :focus-visible{outline-color:#f5e18f;outline-offset:3px}
+@media(max-width:600px){#game-dialog[data-panel=hand]{padding:18px 14px;width:calc(100vw - 24px);border-radius:14px}#game-dialog[data-panel=hand] #game-panel-title{font-size:21px}.hand-view-groups section{padding:12px}.hand-view-groups .cards{grid-template-columns:repeat(auto-fit,57px);gap:8px}.hand-view-groups .card{width:57px;height:82px}.hand-view-groups .card-corner{font-size:13px}.hand-view-groups .card-suit{font-size:26px}.hand-view-footer .button{width:100%}}

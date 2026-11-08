@@ -837,5 +837,21 @@
       "Source footer does not create fake close countdown, financial settlement or unguarded game actions",
       "Responsive table, system font fallback, and text-only live wild rank"
     ]
+  },
+  "viewCardsScreen": {
+    "frame": "11:74211",
+    "panel": "11:74367",
+    "backgroundNode": "11:74368",
+    "background": "#117954",
+    "border": "#85d0b6",
+    "scrollbarNode": "11:78492",
+    "adaptations": [
+      "Live private hand and reconciled local groups replace sample card rows",
+      "Existing code-rendered card faces preserve real ranks, suits, printed jokers and wild badges",
+      "Non-overlapping responsive grid makes every card readable without dragging",
+      "Native vertical scrolling and keyboard close/return controls replace source clipping",
+      "Timer continues, no gameplay action is dispatched from inspection",
+      "No additional static assets; source card samples are dynamic game data"
+    ]
   }
 }

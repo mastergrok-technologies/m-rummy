@@ -853,3 +853,78 @@ test('live standings reorder without losing close focus and stay scoped when swi
   assert.equal(await page.locator('.standings-table').count(), 0);
   assert.equal(f.requests.length, 0); assert.deepEqual(f.errors, []);
 });
+
+for (const [width, height] of [[320, 740], [390, 844], [768, 1024], [1920, 1080]]) {
+  test(`private View Cards at ${width}px shows all 14 faces without overlap or horizontal scroll`, async t => {
+    const hand = Array.from({ length: 14 }, (_, i) => ({ id: `inspect-${i}`, rank: i === 13 ? 0 : i + 1, suit: i === 13 ? 'J' : 'D' }));
+    const f = await fixture(t, { width, height }, false, { hand, phase: 'discard' }); const { page } = f;
+    await open(page, 'View cards');
+    assert.equal(await page.locator('#game-dialog .card').count(), 14);
+    assert.equal(await page.locator('#game-dialog button[data-card]').count(), 0);
+    assert.equal(await page.locator('#game-dialog .joker').count(), 1);
+    assert.equal(await page.locator('#game-dialog .wild-badge').count(), 1);
+    assert.match(await page.locator('.hand-view-summary').innerText(), /14 cards/);
+    assert.doesNotMatch(await page.locator('#game-panel-title').evaluate(el => getComputedStyle(el).fontFamily), /Georgia/);
+    assert.match(await page.locator('#hand-view-note').innerText(), /timer keeps running/);
+    assert.equal(await page.locator('#game-dialog').evaluate(el => el.scrollWidth <= el.clientWidth), true);
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    const boxes = await page.locator('.hand-view-groups .card').evaluateAll(cards => cards.map(c => {
+      const r = c.getBoundingClientRect(); return { x: r.x, y: r.y, right: r.right, bottom: r.bottom, width: r.width, height: r.height };
+    }));
+    for (const [i, a] of boxes.entries()) {
+      assert.equal(a.width, width <= 600 ? 57 : 72); assert.equal(a.height, width <= 600 ? 82 : 104);
+      for (const b of boxes.slice(i + 1)) assert.ok(a.right <= b.x || b.right <= a.x || a.bottom <= b.y || b.bottom <= a.y);
+    }
+    if (process.env.UI_SCREENSHOT_DIR) {
+      await mkdir(process.env.UI_SCREENSHOT_DIR, { recursive: true });
+      await page.screenshot({ path: resolve(process.env.UI_SCREENSHOT_DIR, `view-cards-${width}.png`), fullPage: true });
+    }
+    await page.locator('#hand-view-back').scrollIntoViewIfNeeded();
+    if (process.env.UI_SCREENSHOT_DIR && width <= 390) await page.screenshot({ path: resolve(process.env.UI_SCREENSHOT_DIR, `view-cards-bottom-${width}.png`), fullPage: true });
+    await page.locator('#hand-view-back').click();
+    assert.equal(await page.locator('#game-dialog').evaluate(d => d.open), false);
+    assert.equal(f.requests.length, 0); assert.deepEqual(f.errors, []);
+  });
+}
+
+test('View Cards preserves real groups and selection while live snapshots remove stale cards', async t => {
+  const f = await fixture(t); const { page, room } = f;
+  for (const id of ['card-0', 'card-1', 'card-2']) await page.locator(`[data-card="${id}"]`).click();
+  await page.locator('[data-action="group"]').click();
+  await page.locator('[data-card="card-3"]').click();
+  await open(page, 'View cards');
+  assert.deepEqual(await page.locator('.hand-view-group-heading h3').allTextContents(), ['Your group', 'Ungrouped']);
+  assert.deepEqual(await page.locator('.hand-view-group-heading>span').allTextContents(), ['3 cards', '10 cards']);
+  await page.locator('#hand-view-back').focus();
+  room.hand = room.hand.filter(c => c.id !== 'card-0'); room.version++;
+  await page.waitForFunction(() => document.querySelectorAll('#game-dialog .card').length === 12);
+  assert.deepEqual(await page.locator('.hand-view-group-heading>span').allTextContents(), ['2 cards', '10 cards']);
+  assert.equal(await page.evaluate(() => document.activeElement.id), 'hand-view-back');
+  await page.keyboard.press('Enter');
+  assert.equal(await page.locator('[data-card="card-3"]').getAttribute('aria-pressed'), 'true');
+  assert.equal(f.requests.length, 0); assert.deepEqual(f.errors, []);
+});
+
+test('View Cards follows empty hands, rematches and table privacy without carrying stale cards', async t => {
+  const f = await fixture(t, { width: 390, height: 844 }, true); const { page, room } = f;
+  await open(page, 'View cards');
+  room.hand = []; room.version++;
+  await page.locator('.hand-view-empty').waitFor();
+  assert.equal(await page.locator('#game-dialog .card').count(), 0);
+  assert.match(await page.locator('.hand-view-summary').innerText(), /0 cards/);
+  room.round = 2; room.hand = [{ id: 'new-round-card', rank: 12, suit: 'C' }]; room.wildRank = 12; room.players[0].dropped = true; room.version++;
+  await page.waitForFunction(() => document.querySelector('.hand-view-summary')?.textContent.includes('ROUND 2'));
+  assert.equal(await page.locator('#game-dialog .card').count(), 1);
+  assert.equal(await page.locator('#game-dialog .card').getAttribute('aria-label'), 'Q clubs');
+  assert.match(await page.locator('.hand-view-summary').innerText(), /Dropped/);
+  assert.equal(await page.locator('#game-dialog .wild-badge').count(), 1);
+  await page.keyboard.press('Escape');
+  await page.locator('[data-switch-table="BBBBBB123456"]').click(); await open(page, 'View cards');
+  assert.match(await page.locator('.hand-view-summary').innerText(), /BBBBBB123456/);
+  assert.equal(await page.locator('#game-dialog .card').count(), 13);
+  assert.equal(await page.locator('#game-dialog .red').count(), 0);
+  assert.doesNotMatch(await page.locator('#game-dialog').innerText(), /Dropped/);
+  await page.keyboard.press('Escape'); await open(page, 'Settings');
+  assert.equal(await page.locator('.hand-view-groups').count(), 0);
+  assert.equal(f.requests.length, 0); assert.deepEqual(f.errors, []);
+});
