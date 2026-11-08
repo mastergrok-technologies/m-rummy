@@ -9,6 +9,7 @@ The browser entry point is `public/app.js`. It owns session state, networking, t
 | `public/ui/tables.js` | Joined-table navigation and multi-table picker markup | Caller-provided data and HTML escape function |
 | `public/ui/profile.js` | Player profile, stats and paginated points-history markup | Caller-provided profile, offset and formatting functions |
 | `public/ui/waiting-room.js` | Waiting-room seats, host controls, invite and chat markup | Room snapshot, draft and caller-provided helpers |
+| `public/ui/gameplay.js` | In-game table, cards, round results and sidebar markup | Room snapshot, local hand grouping, draft and helper functions |
 | `public/board-state.js` | Pure table state calculations | None |
 | `public/tutorial.js` | Tutorial content | None |
 
@@ -24,7 +25,7 @@ The browser entry point is `public/app.js`. It owns session state, networking, t
 ## Suggested follow-up phases
 
 - Profile and points-history presentation: extracted in phase 2.
-- Waiting-room markup: extracted in phase 3. Extract gameplay markup in a separate small PR (avoid moving the entire game loop at once).
+- Waiting-room markup: extracted in phase 3. Gameplay markup: extracted in phase 4; next split it into smaller components while preserving existing DOM contracts.
 - Extract game panel renderers by panel (chat, standings, settings, declarations).
 - Move event handling and state synchronization to dedicated controllers after regression coverage is in place.
 
