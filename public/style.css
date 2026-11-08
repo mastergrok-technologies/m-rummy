@@ -649,3 +649,20 @@ button.settings-option:disabled .settings-option-icon{opacity:.55}
 #tables-dialog #table-entry-form :is(input,button){max-width:100%;min-width:0}
 :is(#tutorial-dialog[data-step="6"],#rules-dialog,#tables-dialog) :is(button,input,[tabindex]):focus-visible{outline:3px solid #168457;outline-offset:3px}
 @media(max-width:450px){#tutorial-dialog[data-step="6"],#rules-dialog,#tables-dialog{padding:18px 14px;border-radius:16px}#tutorial-dialog[data-step="6"] .tutorial-declare-intro{padding:16px 14px}#tables-dialog .button-row{gap:6px}#tables-dialog .button-row button{padding:9px 6px;font-size:12px}#rules-dialog .rule-list{padding-left:22px}}
+
+/* Next three existing dialog screens: confirmation, invite and mobile guide. */
+:is(#confirm-dialog,#invite-dialog,#mobile-dialog){width:min(640px,calc(100vw - 24px));max-width:none;max-height:calc(100dvh - 24px);overflow-y:auto;border:2px solid #b7d9c7;border-radius:22px;background:#f5f8f4;color:#123e2b;padding:24px}
+:is(#confirm-dialog,#invite-dialog,#mobile-dialog) h2{font-size:clamp(24px,4vw,34px);line-height:1.2;color:#083827;margin:8px 0 18px}
+:is(#confirm-dialog,#invite-dialog,#mobile-dialog) p{line-height:1.65;overflow-wrap:anywhere}
+#confirm-dialog .confirm-guidance{padding:12px 14px;border-radius:10px;border:1px solid #c6dbce;background:#e7f2ea;color:#286548;font-size:12px}
+#confirm-dialog .button-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+#confirm-dialog .button-row button{min-width:0;min-height:44px}
+#invite-dialog .invite-steps{display:grid;gap:8px;margin:0 0 18px}
+#invite-dialog .invite-steps>span{display:flex;align-items:center;gap:12px;border:1px solid #c9dfd0;background:#e7f2ea;border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.5}
+#invite-dialog .invite-steps strong{display:grid;place-items:center;flex:0 0 28px;width:28px;height:28px;border-radius:50%;background:#0b6846;color:white}
+#invite-dialog #invite-url{display:block;width:100%;min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+#mobile-dialog .mobile-guide-quick{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:16px}
+#mobile-dialog .mobile-guide-quick span{padding:12px 10px;text-align:center;border-radius:10px;border:1px solid #c6dbce;background:#e7f2ea;color:#174c35;font-weight:700;font-size:12px}
+#mobile-dialog h3{color:#0b6846;font-size:18px;margin:20px 0 8px}
+:is(#confirm-dialog,#invite-dialog,#mobile-dialog) :is(button,input,[tabindex]):focus-visible{outline:3px solid #168457;outline-offset:3px}
+@media(max-width:450px){:is(#confirm-dialog,#invite-dialog,#mobile-dialog){padding:18px 14px;border-radius:16px}#confirm-dialog .button-row{gap:8px}#mobile-dialog .mobile-guide-quick{gap:6px}#mobile-dialog .mobile-guide-quick span{padding:10px 6px;font-size:11px}}
