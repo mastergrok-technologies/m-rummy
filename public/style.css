@@ -589,3 +589,18 @@ button.settings-option:disabled .settings-option-icon{opacity:.55}
 #tutorial-dialog[data-step="3"] .tutorial-note{background:#e1eee5;border:1px solid #b7d4c3;color:#214e35}
 #tutorial-dialog[data-step="3"] :is(button,[tabindex]):focus-visible{outline:3px solid #168457;outline-offset:3px}
 @media(max-width:450px){#tutorial-dialog[data-step="3"]{padding:18px 14px;border-radius:16px}#tutorial-dialog[data-step="3"] .tutorial-joker-intro{padding:16px 14px}#tutorial-dialog[data-step="3"] .tutorial-joker-cards{padding:12px 6px}#tutorial-dialog[data-step="3"] .tutorial-joker-cards .card{width:63px;height:91px}}
+
+/* Tutorial 4: valid sets across distinct suits. */
+#tutorial-dialog[data-step="4"]{width:min(720px,calc(100vw - 24px));max-width:none;max-height:calc(100dvh - 24px);padding:24px;border:2px solid #a5d2bc;border-radius:22px;background:#f2f5f2;color:#083827;overflow-y:auto}
+#tutorial-dialog[data-step="4"] #tutorial-title{font-size:clamp(24px,4vw,34px);line-height:1.25;color:#083827;margin:8px 0 18px}
+#tutorial-dialog[data-step="4"] #tutorial-progress{color:#276c4a;font-weight:700;letter-spacing:.08em}
+#tutorial-dialog[data-step="4"] .tutorial-set-intro{display:grid;gap:10px;border-radius:16px;background:linear-gradient(135deg,#174b59,#0b6846);color:#f7fff8;padding:22px;margin-bottom:18px}
+#tutorial-dialog[data-step="4"] .tutorial-set-kicker{font-size:10px;line-height:1.5;letter-spacing:.12em;color:#c2f0d5;font-weight:700}
+#tutorial-dialog[data-step="4"] .tutorial-set-intro strong{font-size:clamp(17px,3vw,23px);line-height:1.4}
+#tutorial-dialog[data-step="4"] .tutorial-set-intro>span:last-of-type{font-size:16px;font-weight:600;color:#f4f9d4}
+#tutorial-dialog[data-step="4"] .tutorial-set-intro p{font-size:12px;line-height:1.65;margin:0;color:#e3f5eb}
+#tutorial-dialog[data-step="4"] .tutorial-set-cards{display:flex;align-items:center;justify-content:center;gap:clamp(6px,2vw,16px);padding:18px 8px;border:1px solid #b7d4c3;border-radius:14px;background:#e1eee5;overflow-x:auto}
+#tutorial-dialog[data-step="4"] .tutorial-set-cards .card{flex-shrink:0}
+#tutorial-dialog[data-step="4"] .tutorial-note{background:#e1eee5;border:1px solid #b7d4c3;color:#214e35}
+#tutorial-dialog[data-step="4"] :is(button,[tabindex]):focus-visible{outline:3px solid #168457;outline-offset:3px}
+@media(max-width:450px){#tutorial-dialog[data-step="4"]{padding:18px 14px;border-radius:16px}#tutorial-dialog[data-step="4"] .tutorial-set-intro{padding:16px 14px}#tutorial-dialog[data-step="4"] .tutorial-set-cards{padding:12px 6px}#tutorial-dialog[data-step="4"] .tutorial-set-cards .card{width:63px;height:91px}}
