@@ -684,3 +684,22 @@ button.settings-option:disabled .settings-option-icon{opacity:.55}
 #game-dialog[data-panel="lastDeal"] .score-table{width:100%;min-width:420px}
 :is(#profile-dialog,#game-dialog[data-panel="hand"],#game-dialog[data-panel="lastDeal"]) :is(button,[tabindex]):focus-visible{outline:3px solid #168457;outline-offset:3px}
 @media(max-width:450px){#profile-dialog{padding:18px 14px;border-radius:16px}#profile-dialog .profile-stats{gap:5px}#profile-dialog .profile-stats>div{padding:10px 4px}#game-dialog[data-panel="hand"] .hand-view-footer button{width:100%}#game-dialog[data-panel="lastDeal"] .score-table-wrap{margin-inline:0}}
+
+/* Screens 35–37: settings, chat and standings polish. */
+#game-dialog[data-panel="settings"] .settings-preferences{min-width:0;max-width:100%;border-radius:14px}
+#game-dialog[data-panel="settings"] .settings-accessibility-note{font-size:12px;line-height:1.5;color:#35694f;margin:4px 0 12px}
+#game-dialog[data-panel="settings"] .settings-preference{display:flex;align-items:center;justify-content:space-between;gap:14px;min-width:0}
+#game-dialog[data-panel="settings"] .settings-preference>span{min-width:0;overflow-wrap:anywhere}
+#game-dialog[data-panel="settings"] .settings-preference input{flex-shrink:0}
+#game-dialog[data-panel="chat"] .chat-modal-context{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+#game-dialog[data-panel="chat"] .messages{min-width:0;max-width:100%;overflow-wrap:anywhere;overscroll-behavior:contain}
+#game-dialog[data-panel="chat"] .chat-suggestions{min-width:0;max-width:100%}
+#game-dialog[data-panel="chat"] .chat-quick-replies,#game-dialog[data-panel="chat"] .chat-emoji-grid{max-width:100%;min-width:0}
+#game-dialog[data-panel="chat"] .message p{overflow-wrap:anywhere}
+#game-dialog[data-panel="standings"] .standings-summary{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+#game-dialog[data-panel="standings"] .standings-table-wrap{max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;border-radius:10px}
+#game-dialog[data-panel="standings"] .standings-table{min-width:460px;width:100%}
+#game-dialog[data-panel="standings"] .standings-explainer{line-height:1.6}
+#game-dialog[data-panel="standings"] .standing-self{box-shadow:inset 3px 0 0 #168457}
+:is(#game-dialog[data-panel="settings"],#game-dialog[data-panel="chat"],#game-dialog[data-panel="standings"]) :is(button,input,textarea,[tabindex]):focus-visible{outline:3px solid #168457;outline-offset:3px}
+@media(max-width:450px){#game-dialog[data-panel="settings"] .settings-preference{gap:8px}#game-dialog[data-panel="chat"] .chat-suggestion-heading{display:flex;gap:6px;flex-wrap:wrap}#game-dialog[data-panel="standings"] .standings-table-wrap{margin-inline:0}}
