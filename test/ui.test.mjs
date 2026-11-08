@@ -982,3 +982,22 @@ test('house rules and add-table dialogs expose clear headings and fit mobile', a
   assert.equal(await page.locator('#tables-dialog').getAttribute('aria-labelledby'), 'tables-dialog-title');
   assert.deepEqual(errors, []);
 });
+
+
+test('confirmation, invitation and mobile guide dialogs have accessible headings and responsive content', async t => {
+  const { page, errors } = await fixture(t, { width: 390, height: 844 });
+  for (const [id, heading] of [['confirm-dialog', 'confirm-title'], ['invite-dialog', 'invite-dialog-title'], ['mobile-dialog', 'mobile-dialog-title']]) {
+    assert.equal(await page.locator('#' + id).getAttribute('aria-labelledby'), heading);
+  }
+  assert.equal(await page.locator('#confirm-dialog').getAttribute('aria-describedby'), 'confirm-text');
+  assert.equal(await page.locator('#invite-dialog .invite-steps > span').count(), 3);
+  assert.equal(await page.locator('#mobile-dialog .mobile-guide-quick > span').count(), 2);
+  for (const id of ['confirm-dialog', 'invite-dialog', 'mobile-dialog']) {
+    const width = await page.locator('#' + id).evaluate(el => {
+      const prior = el.style.display; el.style.display = 'block';
+      const result = el.getBoundingClientRect().width; el.style.display = prior; return result;
+    });
+    assert.equal(width <= 390, true, id + ' overflows mobile viewport');
+  }
+  assert.deepEqual(errors, []);
+});
