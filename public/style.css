@@ -741,3 +741,27 @@ button.settings-option:disabled .settings-option-icon{opacity:.55}
 .table-switcher .add-table{flex-shrink:0;min-height:44px}
 :is(.entry-card,.table-switcher) :is(button,input,[tabindex]):focus-visible{outline:3px solid #168457;outline-offset:3px}
 @media(max-width:450px){.entry-card .tabs{gap:6px}.entry-card .tabs button{padding:10px 6px;font-size:13px}.entry-card .signup-offer{gap:8px}.table-switcher .table-tab{max-width:72vw}.table-switcher .add-table{white-space:nowrap}}
+
+/* Screens 44–46: multi-table picker, waiting seats and waiting-room sidebar. */
+.multi-table-picker{width:min(100%,960px);max-width:100%;min-width:0;margin-inline:auto;box-sizing:border-box}
+.multi-table-picker h1{font-size:clamp(28px,5vw,48px);line-height:1.12;overflow-wrap:anywhere}
+.multi-table-picker>p{max-width:66ch;line-height:1.65}
+.multi-table-picker #table-switcher{max-width:100%;min-width:0}
+.multi-table-picker .multi-table-hint{padding:12px 14px;border-radius:12px;border:1px solid #c9dfd0;background:#e7f2ea;color:#174c35}
+.waiting-page .waiting-layout{max-width:100%;min-width:0}
+.waiting-page .waiting-table{min-width:0}
+.waiting-page .waiting-summary{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.waiting-page .waiting-intro{min-width:0;overflow-wrap:anywhere}
+.waiting-page .waiting-seats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.waiting-page .waiting-seat{min-width:0;overflow-wrap:anywhere}
+.waiting-page .waiting-seat strong{max-width:100%;overflow-wrap:anywhere}
+.waiting-page .waiting-deal{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.waiting-page .waiting-deal .button-row{display:flex;gap:10px;flex-wrap:wrap}
+.waiting-page .waiting-sidebar{min-width:0;max-width:100%}
+.waiting-page .waiting-invite{min-width:0;overflow-wrap:anywhere}
+.waiting-page .waiting-invite code{display:block;max-width:100%;overflow-wrap:anywhere;user-select:all}
+.waiting-page .waiting-sidebar .messages{min-width:0;max-width:100%;overflow-wrap:anywhere;overscroll-behavior:contain}
+.waiting-page .waiting-sidebar .message p{overflow-wrap:anywhere}
+.waiting-page :is(button,input,textarea,[tabindex]):focus-visible,.multi-table-picker :is(button,[tabindex]):focus-visible{outline:3px solid #168457;outline-offset:3px}
+@media(max-width:700px){.waiting-page .waiting-seats{grid-template-columns:repeat(2,minmax(0,1fr))}.waiting-page .waiting-deal .button-row{width:100%}.waiting-page .waiting-deal .button-row button{flex:1 1 170px}}
+@media(max-width:400px){.waiting-page .waiting-seats{gap:7px}.waiting-page .waiting-seat{padding:10px 6px}.waiting-page .waiting-deal .button-row button{flex-basis:100%}.multi-table-picker .multi-table-hint{padding:10px}}
