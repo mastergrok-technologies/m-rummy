@@ -404,3 +404,13 @@ button.settings-option:disabled .settings-option-icon{opacity:.55}
 .hand-view-footer .button{background:#f2f5f2;color:#083827;min-height:44px;border:1px solid #fff}
 #game-dialog[data-panel=hand] :focus-visible{outline-color:#f5e18f;outline-offset:3px}
 @media(max-width:600px){#game-dialog[data-panel=hand]{padding:18px 14px;width:calc(100vw - 24px);border-radius:14px}#game-dialog[data-panel=hand] #game-panel-title{font-size:21px}.hand-view-groups section{padding:12px}.hand-view-groups .cards{grid-template-columns:repeat(auto-fit,57px);gap:8px}.hand-view-groups .card{width:57px;height:82px}.hand-view-groups .card-corner{font-size:13px}.hand-view-groups .card-suit{font-size:26px}.hand-view-footer .button{width:100%}}
+
+/* Figma 11:75070 — opponent declaration; the server settles declarations immediately. */
+.opponent-declaration{display:flex;align-items:center;gap:20px;margin:18px 0;padding:22px 26px;border:1px solid #b4d6c4;border-radius:18px;background:linear-gradient(115deg,#e7f7e9,#f8fcf6);color:#173e32;box-shadow:0 8px 28px #002b2012}
+.opponent-declaration-mark{display:grid;place-items:center;flex:0 0 64px;width:64px;height:64px;border-radius:18px;background:#16533d;color:#fff;font-size:36px}
+.opponent-declaration-copy{flex:1;min-width:0}
+.opponent-declaration-copy .eyebrow{font-size:11px;letter-spacing:.1em;font-weight:800;color:#35745a}
+.opponent-declaration-copy h2{margin:6px 0;font-size:clamp(21px,2.3vw,30px);line-height:1.15;overflow-wrap:anywhere}
+.opponent-declaration-copy p{margin:0;font-size:14px;line-height:1.55;color:#42695a}
+.opponent-declaration-state{white-space:nowrap;border-radius:100px;padding:8px 12px;background:#d3eadd;color:#175139;font-size:12px;font-weight:800}
+@media(max-width:600px){.opponent-declaration{align-items:flex-start;flex-wrap:wrap;gap:12px;padding:16px;margin:12px 0}.opponent-declaration-mark{flex-basis:44px;width:44px;height:44px;border-radius:12px;font-size:26px}.opponent-declaration-copy{flex-basis:calc(100% - 56px)}.opponent-declaration-state{margin-left:56px}.opponent-declaration-copy p{font-size:13px}}
