@@ -122,12 +122,13 @@ function turnText() {
   return state.turn === state.me ? state.phase === 'draw' ? 'Your turn. Pick a card.' : 'Select a discard. Make your move.' : `${p.name} is ${state.phase === 'draw' ? 'drawing' : 'choosing a discard'}…`;
 }
 function connectionNotice() {
-  return `<section id="connection-banner" class="connection-banner connection-notice" role="status" aria-live="polite" aria-atomic="true" hidden><div class="connection-notice-heading"><img src="/assets/figma/connection-lost.svg" alt="" width="86" height="86"><div><h2 id="connection-title">Connection interrupted</h2><p id="connection-detail"></p></div></div><div class="connection-notice-footer"><span class="connection-progress"><img src="/assets/figma/connection-loading.svg" alt="" width="56" height="56"><span id="connection-progress">Connecting…</span></span><button type="button" class="button" id="connection-retry">Reconnect now</button></div></section>`;
+  return `<section id="connection-banner" class="connection-banner connection-notice" role="status" aria-live="polite" aria-atomic="true" hidden><div class="connection-notice-heading"><img src="/assets/figma/connection-lost.svg" alt="" width="86" height="86"><div><span class="connection-kicker">NETWORK STATUS · TABLE PROTECTED</span><h2 id="connection-title">Connection interrupted</h2><p id="connection-detail"></p></div></div><div class="connection-notice-footer"><span class="connection-progress"><img src="/assets/figma/connection-loading.svg" alt="" width="56" height="56"><span id="connection-progress">Connecting…</span></span><button type="button" class="button" id="connection-retry">Reconnect now</button></div></section>`;
 }
 function updateConnectionNotice() {
   const notice = document.querySelector('#connection-banner');
   if (!notice) return;
   const returningFocus = document.activeElement?.id === 'connection-retry';
+  notice.setAttribute('aria-busy', connection === 'syncing' ? 'true' : 'false');
   notice.hidden = connection === 'connected';
   if (notice.hidden) {
     if (returningFocus) (document.querySelector('#connection') || document.querySelector('[data-switch-table]'))?.focus();
@@ -135,9 +136,9 @@ function updateConnectionNotice() {
   }
   notice.dataset.connection = connection;
   const texts = {
-    'connection-title': connection === 'syncing' ? 'Refreshing your table' : 'Connection interrupted',
+    'connection-title': connection === 'syncing' ? 'Refreshing your table' : 'Internet connection lost',
     'connection-detail': state ? 'Reconnecting automatically. Your hand and groups stay here. Server timers keep running; game actions resume after the table is refreshed.' : 'Reconnecting to your tables automatically. Server timers keep running; no game actions will be replayed.',
-    'connection-progress': connection === 'syncing' ? 'Checking the latest state…' : 'Connecting…',
+    'connection-progress': connection === 'syncing' ? 'Verifying the latest table snapshot…' : 'Waiting for network · retrying automatically…',
   };
   for (const [id, text] of Object.entries(texts)) {
     const element = document.getElementById(id);
