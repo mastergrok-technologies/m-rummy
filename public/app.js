@@ -1,3 +1,5 @@
+import { accountFormMarkup } from './ui/account.js';
+import { joinedTablesMarkup, tablePickerMarkup } from './ui/tables.js';
 import { tutorialSteps } from './tutorial.js';
 import { remainingSeconds, reconcileGroups, tableStandings, presencePresentation } from './board-state.js';
 const app = document.querySelector('#app');
@@ -99,8 +101,7 @@ function setAccount(next) {
   if (account) button.innerHTML = `<span class="profile-initial">${esc(account.name.slice(0, 1).toUpperCase())}</span><span><small>Your profile</small><strong>${number(account.points)} pts</strong></span>`;
 }
 function renderAuth() {
-  const create = authMode === 'register';
-  document.querySelector('.entry-card').innerHTML = `<div class="tabs" role="tablist" aria-label="Player account"><button role="tab" aria-selected="${create}" data-auth-mode="register">Create account</button><button role="tab" aria-selected="${!create}" data-auth-mode="login">Sign in</button></div><div class="signup-offer" role="note"><span aria-hidden="true">♣</span><div><strong>${create ? 'Your first 10,000 points are on us.' : 'Your people. Your points. Your seat.'}</strong><p>${create ? 'Build your profile, one friendly win at a time.' : 'Sign in to keep playing with your saved balance.'}</p></div></div><form id="auth-form" aria-label="${create ? 'Create your player account' : 'Sign in to your player account'}">${create ? '<label for="account-name">Your display name</label><input id="account-name" name="name" autocomplete="nickname" minlength="2" maxlength="24" placeholder="What should we call you?" required>' : ''}<label for="account-username">Username</label><input id="account-username" name="username" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" pattern="[a-zA-Z0-9_]{3,24}" minlength="3" maxlength="24" placeholder="Letters, numbers, underscores" required><label for="account-password">Password ${create ? '<span>(at least 10 characters)</span>' : ''}</label><input id="account-password" name="password" type="password" autocomplete="${create ? 'new-password' : 'current-password'}" minlength="10" maxlength="128" placeholder="${create ? 'Choose a password you’ll remember' : 'Your account password'}" required>${create ? '<label for="account-confirm">Confirm password</label><input id="account-confirm" name="confirmPassword" type="password" autocomplete="new-password" minlength="10" maxlength="128" required placeholder="Enter it once more">' : ''}<button type="submit" class="button primary full">${create ? 'Create account · Get 10,000 points' : 'Sign in to your table'} →</button><p class="entry-note">Play points have no cash value. ${create ? 'Keep your username and password safe.' : 'Use the same account on your phone or computer.'}</p></form>`;
+  document.querySelector('.entry-card').innerHTML = accountFormMarkup(authMode === 'register');
 }
 async function loadProfile(offset = 0) {
   try {
@@ -230,7 +231,7 @@ function renderTableSwitcher() {
   const root = document.querySelector('#table-switcher');
   if (!root) return;
   const focused = document.activeElement?.dataset.switchTable;
-  const markup = `<nav class="table-switcher" aria-label="Joined tables" tabindex="0">${tables.map((table, i) => `<button type="button" class="table-tab ${table.code === state?.code ? 'current' : ''} ${table.yourTurn ? 'your-turn' : ''}" data-switch-table="${esc(table.code)}" aria-label="Table ${i + 1}, ${esc(table.code)}${table.yourTurn ? ', your turn' : ''}" ${table.code === state?.code ? 'aria-current="page"' : ''}><span class="table-tab-heading"><strong>Table ${i + 1}</strong><span class="table-tab-code">${esc(table.code)}</span>${table.yourTurn ? '<span class="table-tab-alert">Your turn</span>' : ''}</span><span class="table-tab-meta" data-table-clock="${esc(table.code)}" aria-live="off"></span></button>`).join('')}<button class="button secondary small add-table" data-add-table ${tables.length >= tableLimit ? 'disabled' : ''}>+ Add table (${tables.length}/${tableLimit})</button></nav>`;
+  const markup = joinedTablesMarkup(tables, state?.code, tableLimit, esc);
   // Preserve focus and horizontal scroll when a poll changes only deadlines.
   if (root.dataset.markup !== markup) {
     const scroll = root.querySelector('nav')?.scrollLeft || 0;
@@ -256,7 +257,7 @@ function tablePicker() {
   document.querySelector('#game-dialog').close();
   if (!tables.length) { history.replaceState({}, '', '/'); landing(); return; }
   history.replaceState({}, '', '/'); app.className = 'room-page';
-  app.innerHTML = `<section class="multi-table-picker" aria-labelledby="multi-table-title"><span class="eyebrow">MULTIPLE GAME FEATURE</span><h1 id="multi-table-title">Choose your table</h1><p>You are seated at ${tables.length} of ${tableLimit} available tables. Your other rounds keep running while you switch. Server timers do not pause.</p><div id="table-switcher"></div><p class="multi-table-hint">Tables marked “Your turn” need your attention. Select a table to return to play.</p></section>${connectionNotice()}`;
+  app.innerHTML = tablePickerMarkup(tables.length, tableLimit, connectionNotice());
   renderTableSwitcher(); syncControls();
 }
 async function switchTable(code) {
