@@ -1,3 +1,4 @@
+import { waitingRoomMarkup } from './ui/waiting-room.js';
 import { profileMarkup } from './ui/profile.js';
 import { accountFormMarkup } from './ui/account.js';
 import { joinedTablesMarkup, tablePickerMarkup } from './ui/tables.js';
@@ -162,25 +163,11 @@ function seatAvatar(player) {
   return player.bot ? '<span aria-hidden="true">✦</span>' : `<img src="/assets/figma/avatar-${i + 1}.${[1, 2, 3].includes(i) ? 'svg' : 'png'}" alt="" width="96" height="96">`;
 }
 function renderWaitingRoom() {
-  const host = state.host === state.me;
-  const ready = state.players.length >= 2;
   const focused = document.activeElement;
   const focusKey = focused?.dataset.remove || focused?.dataset.action;
   const cursor = focused?.selectionStart;
   app.className = 'room-page waiting-page';
-  app.innerHTML = `${roomChrome()}
-    <div class="waiting-layout"><section class="waiting-table" aria-labelledby="waiting-title">
-      <div class="waiting-summary"><span class="eyebrow">YOUR PRIVATE TABLE</span><span class="waiting-count">${state.players.length} / 6 seated</span></div>
-      <div class="waiting-intro"><img class="waiting-emblem" src="/assets/figma/waiting-loader.svg" alt="" width="56" height="56"><h2 id="waiting-title">Players are getting ready</h2><p>${host ? 'Invite your friends, or add a practice bot. You choose when to deal.' : 'Your seat is saved. Invite friends while you wait for the host to deal.'}</p><div class="waiting-progress" role="progressbar" aria-label="Seats filled" aria-valuemin="0" aria-valuemax="6" aria-valuenow="${state.players.length}" aria-valuetext="${state.players.length} of 6 seats filled; the host can deal with 2 or more players"><span style="width:${state.players.length / 6 * 100}%"></span></div></div>
-      <div class="waiting-seats" role="group" aria-label="Table seats">${Array.from({ length: 6 }, (_, i) => {
-        const player = state.players[i];
-        if (!player) return `<button class="waiting-seat waiting-seat-open" data-action="invite" aria-label="Invite a friend to seat ${i + 1}"><span class="waiting-avatar" aria-hidden="true">+</span><strong>Open seat</strong><span>Invite a friend</span></button>`;
-        return `<div class="waiting-seat ${player.id === state.me ? 'waiting-seat-self' : ''}" data-player-seat="${esc(player.id)}"><span class="waiting-avatar" aria-hidden="true">${seatAvatar(player)}</span><strong title="${esc(player.name)}">${esc(player.name)}${player.id === state.me ? ' (you)' : ''}</strong><span>${player.bot ? 'Practice bot' : player.id === state.host ? 'Table host' : 'Friend'}</span><span class="player-presence" data-presence-player="${esc(player.id)}"></span>${host && player.bot ? `<button class="waiting-remove" data-remove="${esc(player.id)}" aria-label="Remove ${esc(player.name)}">Remove bot</button>` : ''}</div>`;
-      }).join('')}</div>
-      <div class="waiting-deal"><div><span class="eyebrow">${ready ? 'READY TO DEAL' : 'ONE MORE PLAYER TO BEGIN'}</span><p id="waiting-help">${host ? ready ? 'At least two players are seated. Deal whenever you’re ready.' : 'Invite a friend or add a bot to unlock the first round.' : 'Only the host can start the round. No need to mark yourself ready.'}</p></div><div class="button-row">${host ? `<button class="button felt-outline" data-action="addBot" ${state.players.length >= 6 ? 'disabled' : ''}>+ Practice bot</button><button class="button cream" data-action="start" aria-describedby="waiting-help" ${!ready ? 'disabled' : ''}>Deal the first round <span aria-hidden="true">→</span></button>` : '<span class="waiting-host-status"><span class="status-dot" aria-hidden="true"></span> Waiting for the host</span>'}</div></div>
-    </section><aside class="waiting-sidebar"><section class="side-card waiting-invite" aria-labelledby="waiting-invite-title"><span class="eyebrow">SAVE A SEAT</span><h2 id="waiting-invite-title">Bring your people.</h2><p>Send your private invite link. ${state.hasPassword ? 'This room is password protected. Share its password separately.' : 'Anyone with the link can ask to join your table.'}</p><span class="waiting-code-label">ROOM CODE${state.hasPassword ? ' · PASSWORD PROTECTED' : ''}</span><code>${esc(state.code)}</code><button class="button primary full" data-action="invite">Share invite link <span aria-hidden="true">↗</span></button></section>
-      <section class="side-card"><div class="side-heading"><h2>Table talk</h2><span>${state.players.length}/6 seated</span></div><div class="messages" id="messages" role="log" aria-label="Waiting room chat messages" aria-live="polite" aria-relevant="additions">${state.messages.length ? state.messages.map(m => `<div class="message"><span>${esc(m.name)} <time>${new Date(m.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time></span><p>${esc(m.text)}</p></div>`).join('') : '<div class="empty-chat"><p>Say hello before the first deal.</p><small>Only players at this table can read your messages.</small></div>'}</div><form class="chat-form" id="chat-form"><label class="sr-only" for="chat-input">Message your table</label><input id="chat-input" maxlength="240" placeholder="Say hello…" required autocomplete="off" value="${esc(chatDraft)}"><button type="submit" aria-label="Send message">↑</button></form></section>
-    </aside></div><p class="waiting-footnote">13 cards · 2–6 players · Free play, no money involved <button class="text-button" data-action="tutorial">Learn the rules ↗</button></p>`;
+  app.innerHTML = waitingRoomMarkup(state, chatDraft, roomChrome(), esc, seatAvatar);
   const messageBox = document.querySelector('#messages'); messageBox.scrollTop = messageBox.scrollHeight;
   if (focused?.id === 'chat-input') { const input = document.querySelector('#chat-input'); input.focus(); input.setSelectionRange(cursor, cursor); }
   else if (focusKey) [...app.querySelectorAll('[data-remove], [data-action]')].find(el => (el.dataset.remove || el.dataset.action) === focusKey && !el.disabled)?.focus();
