@@ -230,7 +230,7 @@ function renderTableSwitcher() {
   const root = document.querySelector('#table-switcher');
   if (!root) return;
   const focused = document.activeElement?.dataset.switchTable;
-  const markup = `<nav class="table-switcher" aria-label="Joined tables">${tables.map((table, i) => `<button class="table-tab ${table.code === state?.code ? 'current' : ''} ${table.yourTurn ? 'your-turn' : ''}" data-switch-table="${esc(table.code)}" ${table.code === state?.code ? 'aria-current="page"' : ''}><strong>Table ${i + 1} · ${esc(table.code)}</strong><span data-table-clock="${esc(table.code)}"></span></button>`).join('')}<button class="button secondary small add-table" data-add-table ${tables.length >= tableLimit ? 'disabled' : ''}>+ Add table (${tables.length}/${tableLimit})</button></nav>`;
+  const markup = `<nav class="table-switcher" aria-label="Joined tables">${tables.map((table, i) => `<button type="button" class="table-tab ${table.code === state?.code ? 'current' : ''} ${table.yourTurn ? 'your-turn' : ''}" data-switch-table="${esc(table.code)}" aria-label="Table ${i + 1}, ${esc(table.code)}${table.yourTurn ? ', your turn' : ''}" ${table.code === state?.code ? 'aria-current="page"' : ''}><span class="table-tab-heading"><strong>Table ${i + 1}</strong><span class="table-tab-code">${esc(table.code)}</span>${table.yourTurn ? '<span class="table-tab-alert">Your turn</span>' : ''}</span><span class="table-tab-meta" data-table-clock="${esc(table.code)}"></span></button>`).join('')}<button class="button secondary small add-table" data-add-table ${tables.length >= tableLimit ? 'disabled' : ''}>+ Add table (${tables.length}/${tableLimit})</button></nav>`;
   // Preserve focus and horizontal scroll when a poll changes only deadlines.
   if (root.dataset.markup !== markup) {
     const scroll = root.querySelector('nav')?.scrollLeft || 0;
@@ -256,7 +256,7 @@ function tablePicker() {
   document.querySelector('#game-dialog').close();
   if (!tables.length) { history.replaceState({}, '', '/'); landing(); return; }
   history.replaceState({}, '', '/'); app.className = 'room-page';
-  app.innerHTML = `<h1>Choose your table</h1><p>Your other rounds keep running. Select a table to return to play.</p><div id="table-switcher"></div>${connectionNotice()}`;
+  app.innerHTML = `<section class="multi-table-picker"><span class="eyebrow">MULTIPLE GAME FEATURE</span><h1>Choose your table</h1><p>You are seated at ${tables.length} of ${tableLimit} available tables. Your other rounds keep running while you switch. Server timers do not pause.</p><div id="table-switcher"></div><p class="multi-table-hint">Tables marked “Your turn” need your attention. Select a table to return to play.</p></section>${connectionNotice()}`;
   renderTableSwitcher(); syncControls();
 }
 async function switchTable(code) {
