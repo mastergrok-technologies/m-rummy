@@ -713,6 +713,9 @@ for (const [width, height] of [[390, 844], [768, 1024], [1024, 768], [1920, 1080
     await page.evaluate(async () => { const img = new Image(); img.src = '/assets/figma/info-title.svg'; await img.decode(); if (!img.naturalWidth || !img.naturalHeight) throw Error('Missing information title artwork'); });
     assert.equal(await page.locator('#game-dialog .card, #game-dialog [data-draw]').count(), 0);
     const facts = await page.locator('.info-fact').evaluateAll(els => Object.fromEntries(els.map(el => [el.querySelector('dt').textContent, el.querySelector('dd').textContent])));
+    assert.equal(await page.locator('.info-overview > span').count(), 3);
+    assert.match(await page.locator('.info-overview').innerText(), /60 seconds/);
+    assert.equal(await page.locator('.info-facts').getAttribute('aria-labelledby'), 'info-facts-heading');
     assert.equal(facts['No. of decks'], '2 packs');
     assert.equal(facts['Printed jokers'], '1 per deck · 2 total');
     assert.equal(facts['Human turns'], '60 seconds · Server timed');
