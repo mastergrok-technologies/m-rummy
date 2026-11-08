@@ -33,3 +33,7 @@ The browser entry point is `public/app.js`. It owns session state, networking, t
 - Move event handling and state synchronization to dedicated controllers after regression coverage is in place.
 
 This PR starts the modularization without changing backend routes or deployment artifacts.
+
+## Phase 6: hand and standings dialogs
+
+`public/ui/panels/hand.js` owns arranged-hand inspection markup. `public/ui/panels/standings.js` owns ranked scores and optional revealed hands. The app retains dialog lifecycle, state and disclosure preservation. Last-deal and declaration panels remain to be extracted in a later PR.
