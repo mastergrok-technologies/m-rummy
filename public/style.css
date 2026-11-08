@@ -487,3 +487,15 @@ button.settings-option:disabled .settings-option-icon{opacity:.55}
 .multi-table-picker .multi-table-hint{font-size:13px}
 @media(max-width:600px){.multi-table-picker{margin:16px 10px;padding:20px 16px;border-radius:16px}.multi-table-picker .table-switcher{display:grid;grid-template-columns:1fr}.multi-table-picker .table-tab,.multi-table-picker .add-table{min-width:0;width:100%;min-height:78px}}
 @media(prefers-reduced-motion:reduce){.table-tab{transition:none}}
+
+/* Figma 11:82833 — chat modal polish, preserving the existing composer. */
+#game-dialog[data-panel=chat]{width:min(560px,calc(100vw - 24px));max-height:min(88dvh,790px);border:1px solid #555175;border-radius:20px;box-shadow:0 24px 75px #070a1b9c}
+.chat-modal-context{display:flex;align-items:center;flex-wrap:wrap;gap:9px;padding:10px 12px;border:1px solid #ffffff24;border-radius:12px;background:#ffffff0b}
+.chat-modal-context .chat-scope{margin:0;flex:1 1 auto}
+.chat-modal-live{width:8px;height:8px;border-radius:50%;background:#79dca0;box-shadow:0 0 0 4px #79dca022;flex-shrink:0}
+.chat-modal-privacy{font-size:11px;color:#b4c9c1;white-space:nowrap}
+#game-dialog[data-panel=chat] .messages{min-height:170px;border-color:#77749b55;scrollbar-width:thin}
+#game-dialog[data-panel=chat] .message{border:1px solid #ffffff0c;border-radius:13px}
+#game-dialog[data-panel=chat] .chat-form:focus-within{outline:2px solid #94c6a7;outline-offset:3px;border-radius:8px}
+#game-dialog[data-panel=chat] :focus-visible{outline:3px solid #a3dcb7;outline-offset:3px}
+@media(max-width:600px){#game-dialog[data-panel=chat]{border-radius:14px;padding:12px}.chat-modal-context{padding:9px}.chat-modal-privacy{width:100%;padding-left:17px}#game-dialog[data-panel=chat] .messages{min-height:140px}}
