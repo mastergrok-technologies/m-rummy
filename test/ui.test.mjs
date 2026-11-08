@@ -96,7 +96,8 @@ test('pending moves cannot be repeated and rejected declaration preserves hand',
   assert.equal(requests.length, 1); f.release();
   await page.locator('[data-card="drawn"]').waitFor(); await page.locator('[data-card="drawn"]').click();
   await page.locator('[data-action="declare"]').click(); await page.locator('#confirm-yes').click();
-  await page.getByRole('heading', { name: 'Review your declaration' }).waitFor();
+  await page.locator('#game-dialog[data-panel="declaration"] .invalid-declaration-state').waitFor();
+  assert.match(await page.locator('#game-dialog .declaration-feedback').innerText(), /pure sequence/i);
   assert.equal(await page.locator('.hand-scroll [data-card]').count(), 14);
   assert.match(await page.locator('#game-dialog').innerText(), /pure sequence/);
   await page.waitForFunction(() => !document.querySelector('[data-panel-action="arrange"]').disabled);
@@ -467,9 +468,11 @@ for (const [width, height] of [[390, 844], [1920, 1080]]) {
     assert.equal(await page.locator('[data-card="card-0"]').getAttribute('aria-pressed'), 'true');
     assert.equal(await page.locator('#chat-input').inputValue(), 'Unsent message');
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
-    for (const [name, size] of [['connection-lost', 86], ['connection-loading', 56]]) {
+    for (const [name, desktopSize] of [['connection-lost', 86], ['connection-loading', 56]]) {
       const dimensions = await page.locator(`#connection-banner img[src$="${name}.svg"]`).evaluate(el => ({ width: el.offsetWidth, height: el.offsetHeight }));
-      assert.equal(dimensions.width, size); assert.equal(dimensions.height, size);
+      // The lost-connection illustration intentionally shrinks at the mobile breakpoint.
+      const expectedSize = name === 'connection-lost' && width <= 600 ? 52 : desktopSize;
+      assert.equal(dimensions.width, expectedSize); assert.equal(dimensions.height, expectedSize);
     }
     if (process.env.UI_SCREENSHOT_DIR) {
       await mkdir(process.env.UI_SCREENSHOT_DIR, { recursive: true });
