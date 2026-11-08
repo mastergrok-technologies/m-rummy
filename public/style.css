@@ -425,3 +425,13 @@ button.settings-option:disabled .settings-option-icon{opacity:.55}
 .connection-notice[data-connection=syncing] .connection-progress img{animation-duration:1.8s}
 @media(prefers-reduced-motion:reduce){.connection-progress img{animation:none}}
 @media(max-width:600px){.connection-notice{padding:18px 16px;gap:14px;border-radius:14px}.connection-notice-heading{align-items:flex-start;gap:12px}.connection-notice-heading>img{width:52px}.connection-notice h2{font-size:22px}.connection-notice-footer{flex-wrap:wrap}.connection-progress{flex:1 1 100%;font-size:12px}.connection-notice-footer .button{width:100%;font-size:14px}}
+
+/* Figma 11:75402 — invalid declaration and away/presence states */
+.invalid-declaration-state{display:flex;align-items:flex-start;gap:16px;padding:18px;border-radius:14px;background:#fff4ed;border:1px solid #edc5b2;color:#592e22;margin-bottom:16px}
+.invalid-declaration-icon{display:grid;place-items:center;flex:0 0 42px;width:42px;height:42px;border-radius:50%;background:#bd492e;color:white;font-size:25px;font-weight:800}
+.invalid-declaration-state .eyebrow{font-size:11px;font-weight:800;letter-spacing:.09em;color:#a4472e}
+.invalid-declaration-state h3{font-size:clamp(18px,2vw,24px);line-height:1.3;margin:5px 0 9px;color:#622e20}
+.invalid-declaration-state .declaration-feedback{font-size:14px;line-height:1.6;margin:0;color:#703c2c;overflow-wrap:anywhere}
+[data-player-presence=away],[data-player-presence=unknown],[data-player-presence=reconnecting]{filter:saturate(.72)}
+.player-presence[data-presence=away],.player-presence[data-presence=unknown],.player-presence[data-presence=reconnecting]{font-weight:700}
+@media(max-width:600px){.invalid-declaration-state{gap:12px;padding:14px}.invalid-declaration-icon{flex-basis:34px;width:34px;height:34px;font-size:21px}}
