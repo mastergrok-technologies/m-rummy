@@ -290,7 +290,8 @@ function renderTutorial() {
   const step = tutorialSteps[tutorialIndex];
   document.querySelector('#tutorial-title').textContent = step.title;
   document.querySelector('#tutorial-progress').textContent = `Step ${tutorialIndex + 1} of ${tutorialSteps.length}`;
-  document.querySelector('#tutorial-content').innerHTML = `<p>${esc(step.text)}</p>${step.cards.length ? `<div class="tutorial-cards cards" aria-label="Example cards">${step.cards.map((c, i) => card({ ...c, id: `tutorial-${tutorialIndex}-${i}` }, false, false, null)).join('')}</div>` : ''}<p class="tutorial-note">${esc(step.note)}</p>`;
+  document.querySelector('#tutorial-dialog').dataset.step = String(tutorialIndex + 1);
+  document.querySelector('#tutorial-content').innerHTML = `${tutorialIndex === 0 ? '<div class="tutorial-welcome" aria-label="How a turn works"><span class="tutorial-welcome-label">YOUR FIRST HAND</span><div class="tutorial-welcome-flow"><span><strong>13</strong><small>Start with cards</small></span><span class="tutorial-flow-arrow" aria-hidden="true">→</span><span><strong>+1</strong><small>Draw a card</small></span><span class="tutorial-flow-arrow" aria-hidden="true">→</span><span><strong>−1</strong><small>Discard a card</small></span></div></div>' : ''}<p>${esc(step.text)}</p>${step.cards.length ? `<div class="tutorial-cards cards" aria-label="Example cards">${step.cards.map((c, i) => card({ ...c, id: `tutorial-${tutorialIndex}-${i}` }, false, false, null)).join('')}</div>` : ''}<p class="tutorial-note">${esc(step.note)}</p>`;
   document.querySelector('#tutorial-back').disabled = tutorialIndex === 0;
   document.querySelector('#tutorial-next').textContent = tutorialIndex === tutorialSteps.length - 1 ? 'Finish tutorial' : 'Next →';
 }

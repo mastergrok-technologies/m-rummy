@@ -136,6 +136,9 @@ test('six-step tutorial supports back, finish, revisit and keyboard close', asyn
   const { page, errors } = await fixture(t, { width: 390, height: 844 });
   await open(page, 'Learn rummy');
   assert.equal(await page.locator('#tutorial-back').isDisabled(), true);
+  assert.equal(await page.locator('#tutorial-dialog').getAttribute('data-step'), '1');
+  assert.equal(await page.locator('.tutorial-welcome-flow strong').allTextContents().then(values => values.join(',')), '13,+1,−1');
+  assert.equal(await page.locator('#tutorial-dialog').evaluate(el => el.scrollWidth <= el.clientWidth), true);
   for (let step = 1; step <= 6; step++) {
     assert.equal(await page.locator('#tutorial-progress').textContent(), `Step ${step} of 6`);
     if (step === 3) {
