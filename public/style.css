@@ -414,3 +414,14 @@ button.settings-option:disabled .settings-option-icon{opacity:.55}
 .opponent-declaration-copy p{margin:0;font-size:14px;line-height:1.55;color:#42695a}
 .opponent-declaration-state{white-space:nowrap;border-radius:100px;padding:8px 12px;background:#d3eadd;color:#175139;font-size:12px;font-weight:800}
 @media(max-width:600px){.opponent-declaration{align-items:flex-start;flex-wrap:wrap;gap:12px;padding:16px;margin:12px 0}.opponent-declaration-mark{flex-basis:44px;width:44px;height:44px;border-radius:12px;font-size:26px}.opponent-declaration-copy{flex-basis:calc(100% - 56px)}.opponent-declaration-state{margin-left:56px}.opponent-declaration-copy p{font-size:13px}}
+
+/* Figma 11:75234 — Internet lost / reconnecting state */
+.connection-notice{position:relative;overflow:hidden;border-color:#b8cfc4;background:linear-gradient(140deg,#f8faf8,#e9f2ed);box-shadow:0 16px 42px #092d2624}
+.connection-notice::before{content:"";position:absolute;inset:0 auto 0 0;width:5px;background:#d64326}
+.connection-notice[data-connection=syncing]::before{background:#26785d}
+.connection-kicker{display:block;margin-bottom:8px;font-size:10px;letter-spacing:.12em;font-weight:800;color:#446c5c}
+.connection-notice-heading>img{max-width:clamp(52px,8vw,86px);height:auto}
+.connection-notice :focus-visible{outline:3px solid #186d53;outline-offset:3px}
+.connection-notice[data-connection=syncing] .connection-progress img{animation-duration:1.8s}
+@media(prefers-reduced-motion:reduce){.connection-progress img{animation:none}}
+@media(max-width:600px){.connection-notice{padding:18px 16px;gap:14px;border-radius:14px}.connection-notice-heading{align-items:flex-start;gap:12px}.connection-notice-heading>img{width:52px}.connection-notice h2{font-size:22px}.connection-notice-footer{flex-wrap:wrap}.connection-progress{flex:1 1 100%;font-size:12px}.connection-notice-footer .button{width:100%;font-size:14px}}
