@@ -765,3 +765,31 @@ button.settings-option:disabled .settings-option-icon{opacity:.55}
 .waiting-page :is(button,input,textarea,[tabindex]):focus-visible,.multi-table-picker :is(button,[tabindex]):focus-visible{outline:3px solid #168457;outline-offset:3px}
 @media(max-width:700px){.waiting-page .waiting-seats{grid-template-columns:repeat(2,minmax(0,1fr))}.waiting-page .waiting-deal .button-row{width:100%}.waiting-page .waiting-deal .button-row button{flex:1 1 170px}}
 @media(max-width:400px){.waiting-page .waiting-seats{gap:7px}.waiting-page .waiting-seat{padding:10px 6px}.waiting-page .waiting-deal .button-row button{flex-basis:100%}.multi-table-picker .multi-table-hint{padding:10px}}
+
+/* Screens 47–49: round results, playable hand and in-game sidebar. */
+.gameplay-page .results{max-width:100%;min-width:0;overflow-wrap:anywhere}
+.gameplay-page .results-title{min-width:0}
+.gameplay-page .results-title h2{font-size:clamp(24px,4.5vw,40px);line-height:1.2;overflow-wrap:anywhere}
+.gameplay-page .results .score-table-wrap{max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;border-radius:12px}
+.gameplay-page .results .score-table{width:100%;min-width:420px}
+.gameplay-page .results .winner-hand .cards{max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;padding-bottom:8px}
+.gameplay-page .results .button-row{display:flex;flex-wrap:wrap;gap:10px}
+.gameplay-page .results .button-row button{flex:1 1 160px;min-width:0}
+.gameplay-page .hand-panel{min-width:0;max-width:100%}
+.gameplay-page .hand-header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.gameplay-page .hand-identity{min-width:0;overflow-wrap:anywhere}
+.gameplay-page .hand-tools{display:flex;gap:8px;flex-wrap:wrap}
+.gameplay-page .hand-tools button{min-height:40px}
+.gameplay-page .hand-scroll{max-width:100%;min-width:0;overflow-x:auto;overscroll-behavior-x:contain}
+.gameplay-page .hand-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.gameplay-page .hand-footer .button-row{display:flex;flex-wrap:wrap;gap:8px}
+.gameplay-page .sidebar{min-width:0;max-width:100%}
+.gameplay-page .sidebar .side-card{min-width:0;overflow-wrap:anywhere}
+.gameplay-page .sidebar .messages{max-width:100%;min-width:0;overflow-wrap:anywhere;overscroll-behavior:contain}
+.gameplay-page .sidebar .chat-form{display:flex;min-width:0;gap:8px}
+.gameplay-page .sidebar .chat-form input{min-width:0;flex:1 1 auto}
+.gameplay-page .sidebar .chat-form button{flex-shrink:0}
+.gameplay-page .sidebar .activity p{overflow-wrap:anywhere}
+.gameplay-page :is(button,input,textarea,[tabindex]):focus-visible{outline:3px solid #168457;outline-offset:3px}
+@media(max-width:700px){.gameplay-page .hand-footer .button-row{width:100%}.gameplay-page .hand-footer .button-row button{flex:1 1 95px}.gameplay-page .hand-tools{width:100%}.gameplay-page .hand-tools button{flex:1 1 90px}}
+@media(max-width:400px){.gameplay-page .results .button-row button{flex-basis:100%}.gameplay-page .hand-footer .button-row{gap:5px}.gameplay-page .hand-footer .button-row button{padding-inline:7px}}
