@@ -722,3 +722,22 @@ button.settings-option:disabled .settings-option-icon{opacity:.55}
 #game-dialog[data-panel="bestDeclaration"] .best-declaration-panel .button-row button{min-width:0;flex:1 1 170px}
 :is(#game-dialog[data-panel="information"],#game-dialog[data-panel="declaration"],#game-dialog[data-panel="bestDeclaration"]) :is(button,[tabindex]):focus-visible{outline:3px solid #168457;outline-offset:3px}
 @media(max-width:450px){#game-dialog[data-panel="information"] .info-overview{grid-template-columns:1fr}#game-dialog[data-panel="declaration"] .invalid-declaration-state{gap:8px}#game-dialog[data-panel="declaration"] .declaration-retry-actions button,#game-dialog[data-panel="bestDeclaration"] .best-declaration-panel .button-row button{flex-basis:100%}}
+
+/* UI pages 41–43: account registration, sign-in and table switching. */
+.entry-card{min-width:0;max-width:100%}
+.entry-card .tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.entry-card .tabs button{min-width:0;min-height:44px;overflow-wrap:anywhere}
+.entry-card .tabs [aria-selected="true"]{box-shadow:inset 0 -3px 0 #168457}
+.entry-card .signup-offer{display:flex;align-items:flex-start;gap:12px;min-width:0}
+.entry-card .signup-offer>div{min-width:0;overflow-wrap:anywhere}
+.entry-card #auth-form{display:grid;min-width:0;max-width:100%}
+.entry-card #auth-form input{width:100%;min-width:0;max-width:100%;box-sizing:border-box}
+.entry-card #auth-form .entry-note{line-height:1.6;overflow-wrap:anywhere}
+.table-switcher{max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-gutter:stable}
+.table-switcher .table-tab{min-width:0;flex-shrink:0}
+.table-switcher .table-tab-heading{min-width:0;overflow-wrap:anywhere}
+.table-switcher .table-tab.current{box-shadow:inset 0 -3px 0 #168457}
+.table-switcher .table-tab.your-turn .table-tab-alert{font-weight:800}
+.table-switcher .add-table{flex-shrink:0;min-height:44px}
+:is(.entry-card,.table-switcher) :is(button,input,[tabindex]):focus-visible{outline:3px solid #168457;outline-offset:3px}
+@media(max-width:450px){.entry-card .tabs{gap:6px}.entry-card .tabs button{padding:10px 6px;font-size:13px}.entry-card .signup-offer{gap:8px}.table-switcher .table-tab{max-width:72vw}.table-switcher .add-table{white-space:nowrap}}
