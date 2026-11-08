@@ -1,3 +1,4 @@
+import { gameplayMarkup } from '../public/ui/gameplay.js';
 import { waitingRoomMarkup } from '../public/ui/waiting-room.js';
 import { profileMarkup } from '../public/ui/profile.js';
 import { test } from 'node:test';
@@ -75,4 +76,40 @@ test('waiting room hides host controls from guests and escapes player messages',
   assert.match(html, /&lt;script>alert\(1\)&lt;\/script>/);
   assert.match(html, /value="&lt;draft>"/);
   assert.match(html, /Share its password separately/);
+});
+
+
+const gameplayHelpers = {
+  esc,
+  number: String,
+  card: c => `<span class="card">${c?.id || ''}</span>`,
+  seatAvatar: () => 'A',
+  turnText: () => 'Your turn',
+  ranks: { 5: '5' }
+};
+const gameplayState = () => ({
+  status: 'playing', phase: 'draw', me: 'me', host: 'me', turn: 'me', code: 'ABC123', round: 1,
+  hand: Array.from({ length: 13 }, (_, i) => ({ id: `c${i}`, rank: i + 1, suit: 'H' })),
+  players: [{ id: 'me', name: 'Me', total: 0, turns: 0, count: 13 }, { id: 'friend', name: '<Friend>', total: 5, count: 13 }],
+  indicator: { id: 'joker', rank: 5, suit: 'C' }, wildRank: 5, stockCount: 70,
+  topDiscard: { id: 'discard', rank: 7, suit: 'S' }, messages: [], activity: [], history: []
+});
+
+test('gameplay renderer keeps turn controls, cards and safe player names', () => {
+  const html = gameplayMarkup(gameplayState(), [], new Set(), '', '', gameplayHelpers);
+  assert.match(html, /Draw from closed deck/);
+  assert.match(html, /Your hand/);
+  assert.match(html, /data-action="discard" disabled/);
+  assert.match(html, /&lt;Friend>/);
+  assert.doesNotMatch(html, /<Friend>/);
+});
+
+test('gameplay renderer shows completed round scores and rematch controls', () => {
+  const state = gameplayState();
+  state.status = 'finished';
+  state.result = { reason: 'last-player', winner: 'me', winnerName: 'Me', scores: [{ id: 'me', name: 'Me', penalty: 0, total: 0 }], groups: [] };
+  const html = gameplayMarkup(state, [], new Set(), '', '', gameplayHelpers);
+  assert.match(html, /Round results and player penalties/);
+  assert.match(html, /Deal another round/);
+  assert.match(html, /Me wins/);
 });
