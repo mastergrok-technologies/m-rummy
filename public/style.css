@@ -666,3 +666,21 @@ button.settings-option:disabled .settings-option-icon{opacity:.55}
 #mobile-dialog h3{color:#0b6846;font-size:18px;margin:20px 0 8px}
 :is(#confirm-dialog,#invite-dialog,#mobile-dialog) :is(button,input,[tabindex]):focus-visible{outline:3px solid #168457;outline-offset:3px}
 @media(max-width:450px){:is(#confirm-dialog,#invite-dialog,#mobile-dialog){padding:18px 14px;border-radius:16px}#confirm-dialog .button-row{gap:8px}#mobile-dialog .mobile-guide-quick{gap:6px}#mobile-dialog .mobile-guide-quick span{padding:10px 6px;font-size:11px}}
+
+/* UI pages 32–34: profile, your hand and last-deal accessibility and layout. */
+#profile-dialog{width:min(760px,calc(100vw - 24px));max-width:none;max-height:calc(100dvh - 24px);overflow-y:auto;border:2px solid #b7d9c7;border-radius:22px;background:#f5f8f4;color:#123e2b}
+#profile-dialog #profile-content>h2{font-size:clamp(24px,4vw,34px);line-height:1.2;overflow-wrap:anywhere;color:#083827}
+#profile-dialog .profile-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+#profile-dialog .profile-stats>div{min-width:0;overflow-wrap:anywhere}
+#profile-dialog .points-history{max-width:100%;overflow-wrap:anywhere}
+#profile-dialog .history-pages{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+#game-dialog[data-panel="hand"] .hand-view-summary{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+#game-dialog[data-panel="hand"] .hand-view-groups{max-width:100%;min-width:0}
+#game-dialog[data-panel="hand"] .hand-view-groups section{min-width:0}
+#game-dialog[data-panel="hand"] .hand-view-groups .cards{max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;padding-bottom:8px}
+#game-dialog[data-panel="hand"] .hand-view-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+#game-dialog[data-panel="lastDeal"] .last-deal-summary{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+#game-dialog[data-panel="lastDeal"] .score-table-wrap{max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;border-radius:10px}
+#game-dialog[data-panel="lastDeal"] .score-table{width:100%;min-width:420px}
+:is(#profile-dialog,#game-dialog[data-panel="hand"],#game-dialog[data-panel="lastDeal"]) :is(button,[tabindex]):focus-visible{outline:3px solid #168457;outline-offset:3px}
+@media(max-width:450px){#profile-dialog{padding:18px 14px;border-radius:16px}#profile-dialog .profile-stats{gap:5px}#profile-dialog .profile-stats>div{padding:10px 4px}#game-dialog[data-panel="hand"] .hand-view-footer button{width:100%}#game-dialog[data-panel="lastDeal"] .score-table-wrap{margin-inline:0}}
