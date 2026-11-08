@@ -467,3 +467,23 @@ button.settings-option:disabled .settings-option-icon{opacity:.55}
 .best-declaration-panel .button{min-height:44px}
 #game-dialog[data-panel=bestDeclaration] :focus-visible{outline:3px solid #a8dbb5;outline-offset:3px}
 @media(max-width:600px){.best-declaration-panel ol{padding:14px 14px 14px 34px}.best-declaration-panel .button{width:100%}}
+
+/* Figma 11:78780 — multiple-game dashboard; responsive and server-backed. */
+.table-switcher{scrollbar-width:thin;scrollbar-color:#82b39c transparent}
+.table-tab{position:relative;min-width:190px;transition:border-color .15s,background .15s}
+.table-tab-heading{display:flex;flex-wrap:wrap;align-items:center;gap:7px 9px}
+.table-tab-code{font-size:11px;letter-spacing:.035em;opacity:.75}
+.table-tab-alert{display:inline-flex;align-items:center;border-radius:999px;padding:3px 7px;background:#fce8ae;color:#563a00;font-size:10px;font-weight:800}
+.table-tab-meta{display:block;margin-top:6px;font-size:12px}
+.table-tab.your-turn{border-color:#d9a642;box-shadow:inset 0 0 0 1px #d9a642}
+.table-tab:focus-visible{outline:3px solid #5a9b75;outline-offset:3px}
+.multi-table-picker{max-width:1050px;margin:clamp(28px,6vw,90px) auto;padding:clamp(20px,4vw,48px);border-radius:24px;background:#f3f7f3;box-shadow:0 20px 55px #102f2720}
+.multi-table-picker h1{margin:8px 0 12px;font-size:clamp(30px,4vw,48px);color:#103b2e}
+.multi-table-picker>p{max-width:680px;color:#4a6459;line-height:1.6}
+.multi-table-picker #table-switcher{margin:26px 0 14px}
+.multi-table-picker .table-switcher{display:flex;flex-wrap:wrap;gap:12px;overflow:visible}
+.multi-table-picker .table-tab{flex:1 1 230px;min-height:100px;text-align:left}
+.multi-table-picker .add-table{min-height:100px;flex:1 1 190px}
+.multi-table-picker .multi-table-hint{font-size:13px}
+@media(max-width:600px){.multi-table-picker{margin:16px 10px;padding:20px 16px;border-radius:16px}.multi-table-picker .table-switcher{display:grid;grid-template-columns:1fr}.multi-table-picker .table-tab,.multi-table-picker .add-table{min-width:0;width:100%;min-height:78px}}
+@media(prefers-reduced-motion:reduce){.table-tab{transition:none}}
