@@ -1,3 +1,4 @@
+import { handPanelMarkup } from './ui/panels/hand.js';
 import { settingsPanelMarkup } from './ui/panels/settings.js';
 import { informationPanelMarkup } from './ui/panels/information.js';
 import { chatPanelMarkup } from './ui/panels/chat.js';
@@ -314,10 +315,7 @@ function renderGamePanel() {
     const messages = content.querySelector('.messages');
     messages.scrollTop = nearBottom ? messages.scrollHeight : scroll;
   } else if (openGamePanel === 'hand') {
-    const inGroups = new Set(groups.flatMap(g => g.ids));
-    const visibleGroups = [...groups, { title: 'Ungrouped', ids: state.hand.filter(c => !inGroups.has(c.id)).map(c => c.id) }].filter(g => g.ids.length);
-    const me = state.players.find(p => p.id === state.me);
-    content.innerHTML = `<div class="hand-view-summary"><span>ROOM <strong>${esc(state.code)}</strong> · ROUND ${number(state.round)}</span><span>${state.hand.length} cards${me?.dropped ? ' · Dropped' : ''}</span></div><p class="hand-view-note" id="hand-view-note">Only your own hand is shown. Return to the table to arrange or play. ${state.status === 'playing' ? 'The turn timer keeps running.' : ''}</p><div class="hand-view-groups" aria-label="Your arranged hand">${visibleGroups.length ? visibleGroups.map((g, i) => `<section aria-labelledby="hand-view-group-${i}"><div class="hand-view-group-heading"><h3 id="hand-view-group-${i}">${esc(g.title || 'Group')}</h3><span>${g.ids.length} cards</span></div><div class="cards" role="list" aria-label="${esc(g.title || 'Group')} cards">${g.ids.map(id => `<div role="listitem">${card(state.hand.find(c => c.id === id))}</div>`).join('')}</div></section>`).join('') : '<p class="hand-view-empty" role="status">No cards in your hand. They will appear here when the next round is dealt.</p>'}</div><div class="hand-view-footer"><span>${state.wildRank ? `Wild rank: ${esc(ranks[state.wildRank] || state.wildRank)} · Marked WILD` : 'Wild rank is set when the round starts.'}</span><button type="button" class="button" id="hand-view-back" data-close="game-dialog">Return to table</button></div>`;
+    content.innerHTML = handPanelMarkup(state, groups, { esc, number, card, ranks });
   } else if (openGamePanel === 'standings') {
     const standings = tableStandings(state.players);
     const result = state.status === 'finished' ? state.result : null;
