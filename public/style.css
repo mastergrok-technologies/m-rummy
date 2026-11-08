@@ -623,3 +623,29 @@ button.settings-option:disabled .settings-option-icon{opacity:.55}
 #tutorial-dialog[data-step="5"] .tutorial-note{background:#e1eee5;border:1px solid #b7d4c3;color:#214e35}
 #tutorial-dialog[data-step="5"] :is(button,[tabindex]):focus-visible{outline:3px solid #168457;outline-offset:3px}
 @media(max-width:450px){#tutorial-dialog[data-step="5"]{padding:18px 14px;border-radius:16px}#tutorial-dialog[data-step="5"] .tutorial-scoring-intro{padding:16px 10px}#tutorial-dialog[data-step="5"] .tutorial-scoring-breakdown{gap:3px}#tutorial-dialog[data-step="5"] .tutorial-scoring-breakdown>span:has(b){padding:10px 2px}#tutorial-dialog[data-step="5"] .tutorial-scoring-breakdown small{font-size:9px}#tutorial-dialog[data-step="5"] .tutorial-scoring-cards{padding:12px 6px}#tutorial-dialog[data-step="5"] .tutorial-scoring-cards .card{width:63px;height:91px}}
+
+/* Screens 26–28: final tutorial, house rules and add/join table dialog polish. */
+#tutorial-dialog[data-step="6"]{width:min(740px,calc(100vw - 24px));max-width:none;max-height:calc(100dvh - 24px);padding:24px;border:2px solid #a5d2bc;border-radius:22px;background:#f2f5f2;color:#083827;overflow-y:auto}
+#tutorial-dialog[data-step="6"] #tutorial-title{font-size:clamp(24px,4vw,34px);line-height:1.25;color:#083827;margin:8px 0 18px}
+#tutorial-dialog[data-step="6"] .tutorial-declare-intro{display:grid;gap:12px;border-radius:16px;background:linear-gradient(135deg,#174b59,#0b6846);color:#f7fff8;padding:22px;margin-bottom:18px}
+#tutorial-dialog[data-step="6"] .tutorial-declare-kicker{font-size:11px;letter-spacing:.1em;color:#c2f0d5;font-weight:700}
+#tutorial-dialog[data-step="6"] .tutorial-declare-intro strong{font-size:clamp(18px,3vw,24px)}
+#tutorial-dialog[data-step="6"] .tutorial-declare-intro ol{display:grid;gap:10px;padding-left:24px;margin:0}
+#tutorial-dialog[data-step="6"] .tutorial-declare-intro li{line-height:1.5;padding-left:3px}
+#tutorial-dialog[data-step="6"] .tutorial-declare-intro p{margin:0;color:#d6f3e2;font-size:12px;line-height:1.6}
+#tutorial-dialog[data-step="6"] .tutorial-note{background:#e1eee5;color:#214e35}
+#rules-dialog{width:min(760px,calc(100vw - 24px));max-width:none;max-height:calc(100dvh - 24px);overflow-y:auto;border:2px solid #b7d9c7;border-radius:22px;background:#f5f8f4;color:#123e2b}
+#rules-dialog #rules-dialog-title{font-size:clamp(24px,4vw,34px);line-height:1.2;color:#083827;margin-bottom:8px}
+#rules-dialog .rules-lead{font-size:14px;font-weight:600;color:#286d4b;margin:0 0 14px}
+#rules-dialog .rule-list{display:grid;gap:10px;padding-left:28px}
+#rules-dialog .rule-list li{line-height:1.65;padding:10px 12px;border:1px solid #d0dfd3;border-radius:10px;background:#fff}
+#tables-dialog{width:min(680px,calc(100vw - 24px));max-width:none;max-height:calc(100dvh - 24px);overflow-y:auto;border:2px solid #b7d9c7;border-radius:22px;background:#f5f8f4;color:#123e2b}
+#tables-dialog #tables-dialog-title{font-size:clamp(24px,4vw,34px);line-height:1.2;color:#083827}
+#tables-dialog .tables-dialog-hint{font-size:14px;line-height:1.5;color:#286d4b;font-weight:600}
+#tables-dialog .button-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+#tables-dialog .button-row button{min-width:0;min-height:46px}
+#tables-dialog .button-row button[aria-pressed="true"]{box-shadow:inset 0 0 0 2px #116c46}
+#tables-dialog #table-entry-form{display:grid;gap:10px}
+#tables-dialog #table-entry-form :is(input,button){max-width:100%;min-width:0}
+:is(#tutorial-dialog[data-step="6"],#rules-dialog,#tables-dialog) :is(button,input,[tabindex]):focus-visible{outline:3px solid #168457;outline-offset:3px}
+@media(max-width:450px){#tutorial-dialog[data-step="6"],#rules-dialog,#tables-dialog{padding:18px 14px;border-radius:16px}#tutorial-dialog[data-step="6"] .tutorial-declare-intro{padding:16px 14px}#tables-dialog .button-row{gap:6px}#tables-dialog .button-row button{padding:9px 6px;font-size:12px}#rules-dialog .rule-list{padding-left:22px}}
