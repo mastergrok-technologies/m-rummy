@@ -545,3 +545,18 @@ button.settings-option:disabled .settings-option-icon{opacity:.55}
 #game-dialog[data-panel=information] .info-overview strong{font-size:18px;font-weight:650;color:#083827;overflow-wrap:anywhere}
 #game-dialog[data-panel=information] .info-section-heading{margin:0 0 8px;color:#083827;font-size:16px;line-height:1.5;font-weight:650}
 @media(max-width:600px){#game-dialog[data-panel=information] .info-overview{gap:6px;margin:12px 0 18px}#game-dialog[data-panel=information] .info-overview>span{padding:10px 8px;font-size:10px}#game-dialog[data-panel=information] .info-overview strong{font-size:13px}}
+
+/* Tutorial 1: introductory card-flow illustration, Figma 11:84354. */
+#tutorial-dialog[data-step="1"]{width:min(720px,calc(100vw - 24px));max-width:none;max-height:calc(100dvh - 24px);border:2px solid #b7d9c7;border-radius:22px;background:#f2f5f2;color:#083827;padding:24px;overflow-y:auto}
+#tutorial-dialog[data-step="1"] #tutorial-title{font-size:clamp(24px,4vw,36px);line-height:1.2;margin:8px 0 20px;color:#083827}
+#tutorial-dialog[data-step="1"] #tutorial-progress{color:#276c4a;font-weight:700;letter-spacing:.08em}
+#tutorial-dialog[data-step="1"] .tutorial-welcome{border-radius:18px;background:linear-gradient(135deg,#0b6846,#174c3b);color:#fff;padding:24px 20px;margin-bottom:20px}
+#tutorial-dialog[data-step="1"] .tutorial-welcome-label{display:block;font-size:11px;letter-spacing:.16em;font-weight:700;color:#c5f2d8;margin-bottom:16px}
+#tutorial-dialog[data-step="1"] .tutorial-welcome-flow{display:flex;align-items:center;justify-content:space-between;gap:8px}
+#tutorial-dialog[data-step="1"] .tutorial-welcome-flow>span:not(.tutorial-flow-arrow){display:grid;place-items:center;gap:8px;flex:1;min-width:0;text-align:center}
+#tutorial-dialog[data-step="1"] .tutorial-welcome-flow strong{display:grid;place-items:center;width:76px;height:92px;border:2px solid #c4e7d2;border-radius:10px;background:#f6fff8;color:#095336;font-size:32px;box-shadow:0 5px 0 #8ebaa1}
+#tutorial-dialog[data-step="1"] .tutorial-welcome-flow small{font-size:12px;line-height:1.35;color:#effbf2}
+#tutorial-dialog[data-step="1"] .tutorial-flow-arrow{font-size:26px;color:#bce8cb;flex:0 0 auto}
+#tutorial-dialog[data-step="1"] .tutorial-note{border:1px solid #c3d8c8;background:#e1eee5;color:#204b32}
+#tutorial-dialog[data-step="1"] :is(button,[tabindex]):focus-visible{outline:3px solid #168457;outline-offset:3px}
+@media(max-width:450px){#tutorial-dialog[data-step="1"]{padding:18px 14px;border-radius:16px}#tutorial-dialog[data-step="1"] .tutorial-welcome{padding:18px 10px}#tutorial-dialog[data-step="1"] .tutorial-welcome-flow{gap:4px}#tutorial-dialog[data-step="1"] .tutorial-welcome-flow strong{width:58px;height:76px;font-size:26px}#tutorial-dialog[data-step="1"] .tutorial-welcome-flow small{font-size:10px}#tutorial-dialog[data-step="1"] .tutorial-flow-arrow{font-size:18px}}
