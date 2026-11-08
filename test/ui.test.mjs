@@ -788,6 +788,9 @@ for (const [width, height] of [[390, 844], [768, 1024], [1024, 768], [1920, 1080
     assert.match(await page.locator('[data-standing-player="me"]').innerText(), /You/);
     assert.equal(await page.locator('#game-dialog .card, #game-dialog script').count(), 0);
     assert.equal(await page.locator('.standing-winner').count(), 0);
+    assert.equal(await page.locator('.standing-rank-badge').count(), 6);
+    assert.equal(await page.locator('.standings-table tr[aria-current="true"]').count(), 1);
+    assert.equal(await page.locator('.standings-table .standing-top-1').count() >= 1, true);
     assert.equal(await page.locator('.standing-round [aria-label="Not settled"]').count(), 6);
     assert.match(await page.locator('[data-standing-player="sixth"]').innerText(), /<script>Friend<\/script>/);
     assert.equal(await page.locator('#game-dialog').evaluate(el => el.scrollWidth <= el.clientWidth), true);

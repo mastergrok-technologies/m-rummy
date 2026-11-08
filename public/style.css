@@ -529,3 +529,12 @@ button.settings-option:disabled .settings-option-icon{opacity:.55}
 #game-dialog[data-panel=settings] .settings-preference input:focus-visible{outline:3px solid #9fd5b1;outline-offset:3px}
 @media(max-width:600px){#game-dialog[data-panel=settings]{border-radius:14px;padding:12px}.settings-modal-context{gap:8px}.settings-room-label{max-width:100%}#game-dialog[data-panel=settings] .settings-option{min-height:64px}}
 @media(prefers-reduced-motion:reduce){#game-dialog[data-panel=settings] .settings-option{transition:none}}
+
+/* Leaderboard modal: rank hierarchy and accessible self-row emphasis (Figma 11:65148). */
+#game-dialog[data-panel=standings] .standing-rank-badge{display:inline-grid;place-items:center;min-width:34px;min-height:34px;padding:2px;border:1px solid transparent;border-radius:50%;font-weight:700;line-height:1}
+#game-dialog[data-panel=standings] .standing-top-1 .standing-rank-badge{background:#f8e7ae;border-color:#c29a38;color:#61480b}
+#game-dialog[data-panel=standings] .standing-top-2 .standing-rank-badge{background:#e4e8ed;border-color:#a4adb8;color:#384553}
+#game-dialog[data-panel=standings] .standing-top-3 .standing-rank-badge{background:#f1d8c5;border-color:#bc8a65;color:#683c22}
+#game-dialog[data-panel=standings] .standings-table tbody tr[aria-current=true]>:is(th,td){background:#e1f4e8;box-shadow:inset 0 1px #8cbaa0,inset 0 -1px #8cbaa0}
+#game-dialog[data-panel=standings] .standings-table tbody tr[aria-current=true]>:first-child{box-shadow:inset 3px 0 #15834f,inset 0 1px #8cbaa0,inset 0 -1px #8cbaa0}
+@media(max-width:450px){#game-dialog[data-panel=standings] .standing-rank-badge{min-width:26px;min-height:26px;font-size:13px}}
