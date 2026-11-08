@@ -1012,3 +1012,12 @@ test('profile, hand and last-deal screens expose accessible region names', async
   await page.keyboard.press('Escape');
   assert.deepEqual(errors, []);
 });
+
+
+test('account and table navigation expose accessible names on mobile', async t => {
+  const { page, errors } = await fixture(t, { width: 390, height: 844 });
+  assert.equal(await page.locator('.table-switcher').getAttribute('aria-label'), 'Joined tables');
+  assert.equal(await page.locator('.table-switcher').getAttribute('tabindex'), '0');
+  assert.equal(await page.locator('.table-switcher').evaluate(el => el.clientWidth <= 390), true);
+  assert.deepEqual(errors, []);
+});
