@@ -703,3 +703,22 @@ button.settings-option:disabled .settings-option-icon{opacity:.55}
 #game-dialog[data-panel="standings"] .standing-self{box-shadow:inset 3px 0 0 #168457}
 :is(#game-dialog[data-panel="settings"],#game-dialog[data-panel="chat"],#game-dialog[data-panel="standings"]) :is(button,input,textarea,[tabindex]):focus-visible{outline:3px solid #168457;outline-offset:3px}
 @media(max-width:450px){#game-dialog[data-panel="settings"] .settings-preference{gap:8px}#game-dialog[data-panel="chat"] .chat-suggestion-heading{display:flex;gap:6px;flex-wrap:wrap}#game-dialog[data-panel="standings"] .standings-table-wrap{margin-inline:0}}
+
+/* Screens 38–40: game information, declaration retry, best declaration guide. */
+#game-dialog[data-panel="information"] .info-room-summary{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+#game-dialog[data-panel="information"] .info-overview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+#game-dialog[data-panel="information"] .info-overview>span{min-width:0;overflow-wrap:anywhere}
+#game-dialog[data-panel="information"] .info-facts{max-width:100%;min-width:0}
+#game-dialog[data-panel="information"] .info-fact{min-width:0;overflow-wrap:anywhere}
+#game-dialog[data-panel="information"] .info-rules{line-height:1.6}
+#game-dialog[data-panel="declaration"] .invalid-declaration-state{display:flex;align-items:flex-start;gap:14px;min-width:0}
+#game-dialog[data-panel="declaration"] .invalid-declaration-state>div{min-width:0;overflow-wrap:anywhere}
+#game-dialog[data-panel="declaration"] .declaration-retry-guidance{line-height:1.65}
+#game-dialog[data-panel="declaration"] .declaration-retry-actions{display:flex;flex-wrap:wrap;gap:10px}
+#game-dialog[data-panel="declaration"] .declaration-retry-actions button{min-width:0;flex:1 1 170px}
+#game-dialog[data-panel="bestDeclaration"] .best-declaration-panel{max-width:100%;min-width:0;overflow-wrap:anywhere}
+#game-dialog[data-panel="bestDeclaration"] .best-declaration-panel ol{display:grid;gap:10px;padding-left:24px;line-height:1.55}
+#game-dialog[data-panel="bestDeclaration"] .best-declaration-panel .button-row{display:flex;flex-wrap:wrap;gap:10px}
+#game-dialog[data-panel="bestDeclaration"] .best-declaration-panel .button-row button{min-width:0;flex:1 1 170px}
+:is(#game-dialog[data-panel="information"],#game-dialog[data-panel="declaration"],#game-dialog[data-panel="bestDeclaration"]) :is(button,[tabindex]):focus-visible{outline:3px solid #168457;outline-offset:3px}
+@media(max-width:450px){#game-dialog[data-panel="information"] .info-overview{grid-template-columns:1fr}#game-dialog[data-panel="declaration"] .invalid-declaration-state{gap:8px}#game-dialog[data-panel="declaration"] .declaration-retry-actions button,#game-dialog[data-panel="bestDeclaration"] .best-declaration-panel .button-row button{flex-basis:100%}}
