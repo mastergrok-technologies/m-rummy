@@ -538,3 +538,10 @@ button.settings-option:disabled .settings-option-icon{opacity:.55}
 #game-dialog[data-panel=standings] .standings-table tbody tr[aria-current=true]>:is(th,td){background:#e1f4e8;box-shadow:inset 0 1px #8cbaa0,inset 0 -1px #8cbaa0}
 #game-dialog[data-panel=standings] .standings-table tbody tr[aria-current=true]>:first-child{box-shadow:inset 3px 0 #15834f,inset 0 1px #8cbaa0,inset 0 -1px #8cbaa0}
 @media(max-width:450px){#game-dialog[data-panel=standings] .standing-rank-badge{min-width:26px;min-height:26px;font-size:13px}}
+
+/* Game Information modal: live overview and legible detail hierarchy (Figma 11:65307). */
+#game-dialog[data-panel=information] .info-overview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:14px 0 22px}
+#game-dialog[data-panel=information] .info-overview>span{display:flex;flex-direction:column;justify-content:center;gap:5px;min-width:0;padding:14px 16px;border:1px solid #b5c6bb;border-radius:12px;background:#edf3ef;color:#40574d;font-size:12px;line-height:1.4}
+#game-dialog[data-panel=information] .info-overview strong{font-size:18px;font-weight:650;color:#083827;overflow-wrap:anywhere}
+#game-dialog[data-panel=information] .info-section-heading{margin:0 0 8px;color:#083827;font-size:16px;line-height:1.5;font-weight:650}
+@media(max-width:600px){#game-dialog[data-panel=information] .info-overview{gap:6px;margin:12px 0 18px}#game-dialog[data-panel=information] .info-overview>span{padding:10px 8px;font-size:10px}#game-dialog[data-panel=information] .info-overview strong{font-size:13px}}
