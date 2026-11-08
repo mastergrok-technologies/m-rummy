@@ -147,6 +147,12 @@ test('six-step tutorial supports back, finish, revisit and keyboard close', asyn
       assert.equal(await page.locator('.tutorial-pure-cards .card').count(), 3);
       assert.equal(await page.locator('#tutorial-dialog').evaluate(el => el.scrollWidth <= el.clientWidth), true);
     }
+    if (step === 6) {
+      assert.equal(await page.locator('#tutorial-dialog').getAttribute('data-step'), '6');
+      assert.equal(await page.locator('.tutorial-declare-intro li').count(), 4);
+      assert.match(await page.locator('.tutorial-declare-intro').innerText(), /server validation/i);
+      assert.equal(await page.locator('#tutorial-dialog').evaluate(el => el.scrollWidth <= el.clientWidth), true);
+    }
     if (step === 5) {
       assert.equal(await page.locator('#tutorial-dialog').getAttribute('data-step'), '5');
       assert.match(await page.locator('.tutorial-scoring-intro').innerText(), /King \+ Queen \+ Five = 25 points/);
@@ -962,4 +968,17 @@ test('View Cards follows empty hands, rematches and table privacy without carryi
   await page.keyboard.press('Escape'); await open(page, 'Settings');
   assert.equal(await page.locator('.hand-view-groups').count(), 0);
   assert.equal(f.requests.length, 0); assert.deepEqual(f.errors, []);
+});
+
+
+test('house rules and add-table dialogs expose clear headings and fit mobile', async t => {
+  const { page, errors } = await fixture(t, { width: 390, height: 844 });
+  await open(page, 'Learn rummy');
+  await page.keyboard.press('Escape');
+  assert.equal(await page.locator('#rules-dialog').getAttribute('aria-labelledby'), 'rules-dialog-title');
+  assert.match(await page.locator('.rules-lead').innerText(), /essentials/i);
+  assert.equal(await page.locator('#rules-dialog').evaluate(el => el.scrollWidth <= el.clientWidth), true);
+  assert.match(await page.locator('.tables-dialog-hint').innerText(), /invite code/i);
+  assert.equal(await page.locator('#tables-dialog').getAttribute('aria-labelledby'), 'tables-dialog-title');
+  assert.deepEqual(errors, []);
 });
