@@ -1,3 +1,4 @@
+import { waitingRoomMarkup } from '../public/ui/waiting-room.js';
 import { profileMarkup } from '../public/ui/profile.js';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -50,4 +51,28 @@ test('profile history renders page offsets and escapes room names', () => {
   assert.match(html, /data-history="40"/);
   assert.match(html, /&lt;room>/);
   assert.doesNotMatch(html, /<room>/);
+});
+
+
+test('waiting room keeps host deal guarded until two players are seated', () => {
+  const base = { me: 'me', host: 'me', code: 'ABC123', hasPassword: false, players: [{ id: 'me', name: 'Me' }], messages: [] };
+  const avatar = () => 'M';
+  const one = waitingRoomMarkup(base, '', '<header>Room</header>', esc, avatar);
+  assert.match(one, /Deal the first round[^<]*<span aria-hidden="true">/);
+  assert.match(one, /data-action="start" aria-describedby="waiting-help" disabled/);
+  assert.match(one, /Invite a friend to seat 2/);
+  assert.match(one, /<header>Room<\/header>/);
+  const two = waitingRoomMarkup({ ...base, players: [...base.players, { id: 'friend', name: 'Friend' }] }, '', '', esc, avatar);
+  assert.match(two, /data-action="start" aria-describedby="waiting-help" >/);
+});
+
+test('waiting room hides host controls from guests and escapes player messages', () => {
+  const state = { me: 'guest', host: 'host', code: 'ROOM42', hasPassword: true, players: [{ id: 'host', name: '<Host>' }, { id: 'guest', name: 'Guest' }], messages: [{ name: '<Eve>', text: '<script>alert(1)</script>', time: '2026-11-01T10:00:00Z' }] };
+  const html = waitingRoomMarkup(state, '<draft>', '', esc, () => 'A');
+  assert.doesNotMatch(html, /data-action="start"/);
+  assert.doesNotMatch(html, /data-action="addBot"/);
+  assert.match(html, /&lt;Host>/);
+  assert.match(html, /&lt;script>alert\(1\)&lt;\/script>/);
+  assert.match(html, /value="&lt;draft>"/);
+  assert.match(html, /Share its password separately/);
 });
