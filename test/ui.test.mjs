@@ -147,6 +147,13 @@ test('six-step tutorial supports back, finish, revisit and keyboard close', asyn
       assert.equal(await page.locator('.tutorial-pure-cards .card').count(), 3);
       assert.equal(await page.locator('#tutorial-dialog').evaluate(el => el.scrollWidth <= el.clientWidth), true);
     }
+    if (step === 5) {
+      assert.equal(await page.locator('#tutorial-dialog').getAttribute('data-step'), '5');
+      assert.match(await page.locator('.tutorial-scoring-intro').innerText(), /King \+ Queen \+ Five = 25 points/);
+      assert.deepEqual(await page.locator('.tutorial-scoring-breakdown b').allTextContents(), ['10', '10', '5', '25']);
+      assert.equal(await page.locator('.tutorial-scoring-cards .card').count(), 3);
+      assert.equal(await page.locator('#tutorial-dialog').evaluate(el => el.scrollWidth <= el.clientWidth), true);
+    }
     if (step === 4) {
       assert.equal(await page.locator('#tutorial-dialog').getAttribute('data-step'), '4');
       assert.match(await page.locator('.tutorial-set-intro').innerText(), /Same rank\. Different suits\./);
