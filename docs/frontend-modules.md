@@ -10,6 +10,9 @@ The browser entry point is `public/app.js`. It owns session state, networking, t
 | `public/ui/profile.js` | Player profile, stats and paginated points-history markup | Caller-provided profile, offset and formatting functions |
 | `public/ui/waiting-room.js` | Waiting-room seats, host controls, invite and chat markup | Room snapshot, draft and caller-provided helpers |
 | `public/ui/gameplay.js` | In-game table, cards, round results and sidebar markup | Room snapshot, local hand grouping, draft and helper functions |
+| `public/ui/panels/chat.js` | Private table chat dialog markup | Messages, composer state and helpers |
+| `public/ui/panels/information.js` | Game information and room rules dialog markup | Room snapshot and formatting helpers |
+| `public/ui/panels/settings.js` | Display settings dialog markup | Preferences, last-deal availability and save status |
 | `public/board-state.js` | Pure table state calculations | None |
 | `public/tutorial.js` | Tutorial content | None |
 
@@ -26,7 +29,7 @@ The browser entry point is `public/app.js`. It owns session state, networking, t
 
 - Profile and points-history presentation: extracted in phase 2.
 - Waiting-room markup: extracted in phase 3. Gameplay markup: extracted in phase 4; next split it into smaller components while preserving existing DOM contracts.
-- Extract game panel renderers by panel (chat, standings, settings, declarations).
+- Game panel renderers: chat, information and settings extracted in phase 5; standings, hand, last-deal and declarations remain for subsequent phases.
 - Move event handling and state synchronization to dedicated controllers after regression coverage is in place.
 
 This PR starts the modularization without changing backend routes or deployment artifacts.

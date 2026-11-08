@@ -1,3 +1,6 @@
+import { chatPanelMarkup } from '../public/ui/panels/chat.js';
+import { informationPanelMarkup } from '../public/ui/panels/information.js';
+import { settingsPanelMarkup } from '../public/ui/panels/settings.js';
 import { gameplayMarkup } from '../public/ui/gameplay.js';
 import { waitingRoomMarkup } from '../public/ui/waiting-room.js';
 import { profileMarkup } from '../public/ui/profile.js';
@@ -112,4 +115,30 @@ test('gameplay renderer shows completed round scores and rematch controls', () =
   assert.match(html, /Round results and player penalties/);
   assert.match(html, /Deal another round/);
   assert.match(html, /Me wins/);
+});
+
+
+test('chat panel renders private messages safely and keeps draft', () => {
+  const state = { code: 'ABC', players: [{ id: 'me' }], messages: [{ name: '<Alice>', text: '<script>', time: '2026-11-01T10:00:00Z' }] };
+  const html = chatPanelMarkup(state, 'hello', 'replies', false, 'connected', { esc, chatEmojis: [], chatReplies: ['Hi'] });
+  assert.match(html, /&lt;Alice>/);
+  assert.match(html, /&lt;script>/);
+  assert.match(html, /value="hello"/);
+  assert.match(html, /Table message history/);
+});
+
+test('information panel describes rules and room safely', () => {
+  const state = { code: '<room>', players: [{ id: 'me' }], status: 'playing', round: 2, hasPassword: true };
+  const html = informationPanelMarkup(state, { esc, number: String });
+  assert.match(html, /&lt;room>/);
+  assert.match(html, /Password protected/);
+  assert.match(html, /A valid declaration/);
+});
+
+test('settings panel reflects available last deal and local preferences', () => {
+  const state = { code: 'ABC' };
+  const html = settingsPanelMarkup(state, false, { roomyCards: true, quietMotion: false }, 'Saved', { esc });
+  assert.match(html, /data-settings-panel="lastDeal"/);
+  assert.match(html, /data-preference="roomyCards"[^>]*checked/);
+  assert.match(html, /Saved/);
 });
