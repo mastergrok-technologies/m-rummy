@@ -1,3 +1,4 @@
+import { profileMarkup } from './ui/profile.js';
 import { accountFormMarkup } from './ui/account.js';
 import { joinedTablesMarkup, tablePickerMarkup } from './ui/tables.js';
 import { tutorialSteps } from './tutorial.js';
@@ -107,7 +108,7 @@ async function loadProfile(offset = 0) {
   try {
     const profile = await request(`/api/profile?offset=${offset}`); profileOffset = offset; setAccount(profile);
     const dialog = document.querySelector('#profile-dialog');
-    document.querySelector('#profile-content').innerHTML = `<h2>${esc(profile.name)}<small class="profile-handle">@${esc(profile.username)}</small></h2><div class="points-total" aria-label="Current play points"><span>YOUR PLAY POINTS</span><strong>${number(profile.points)}</strong><small>Saved to your account · available on every device</small></div><div class="profile-stats" aria-label="Player statistics"><div><strong>${number(profile.wins)}</strong><span>Wins</span></div><div><strong>${number(profile.roundsPlayed)}</strong><span>Human rounds</span></div><div><strong>${number(profile.points - 10000)}</strong><span>Points earned</span></div></div><p class="profile-explainer">10,000 welcome points, once per account. Win against other registered players to earn more points. Losses leave your balance unchanged. Bot-only practice earns no profile points.</p><h3 id="points-history-title">Points history</h3><div class="points-history" role="region" aria-labelledby="points-history-title">${profile.history.map(event => `<div><span><strong>${event.type === 'signup' ? 'Welcome bonus' : event.type === 'win' ? `Round ${event.round} win` : `Round ${event.round} played`}</strong><small>${new Date(event.time).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}${event.room ? ` · ${esc(event.room)}` : ''}</small></span><span class="event-amount">${event.amount ? '+' : ''}${number(event.amount)}<small>${number(event.balance)} balance</small></span></div>`).join('')}</div><div class="history-pages"><button class="text-button" data-history="${Math.max(0, offset - 20)}" ${offset === 0 ? 'disabled' : ''}>← Newer</button><span>${Math.min(offset + 1, profile.historyTotal)}–${Math.min(offset + 20, profile.historyTotal)} of ${profile.historyTotal}</span><button class="text-button" data-history="${offset + 20}" ${offset + 20 >= profile.historyTotal ? 'disabled' : ''}>Older →</button></div><button id="sign-out" class="button secondary full">Sign out</button><p class="entry-note">Your balance and history stay saved when you sign out.</p>`;
+    document.querySelector('#profile-content').innerHTML = profileMarkup(profile, offset, esc, number);
     if (!dialog.open) dialog.showModal();
   } catch (e) { toast(e.message, true); }
 }
