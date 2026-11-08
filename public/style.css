@@ -604,3 +604,22 @@ button.settings-option:disabled .settings-option-icon{opacity:.55}
 #tutorial-dialog[data-step="4"] .tutorial-note{background:#e1eee5;border:1px solid #b7d4c3;color:#214e35}
 #tutorial-dialog[data-step="4"] :is(button,[tabindex]):focus-visible{outline:3px solid #168457;outline-offset:3px}
 @media(max-width:450px){#tutorial-dialog[data-step="4"]{padding:18px 14px;border-radius:16px}#tutorial-dialog[data-step="4"] .tutorial-set-intro{padding:16px 14px}#tutorial-dialog[data-step="4"] .tutorial-set-cards{padding:12px 6px}#tutorial-dialog[data-step="4"] .tutorial-set-cards .card{width:63px;height:91px}}
+
+/* Tutorial 5: explain penalty arithmetic without changing server scoring. */
+#tutorial-dialog[data-step="5"]{width:min(740px,calc(100vw - 24px));max-width:none;max-height:calc(100dvh - 24px);padding:24px;border:2px solid #a5d2bc;border-radius:22px;background:#f2f5f2;color:#083827;overflow-y:auto}
+#tutorial-dialog[data-step="5"] #tutorial-title{font-size:clamp(24px,4vw,34px);line-height:1.25;color:#083827;margin:8px 0 18px}
+#tutorial-dialog[data-step="5"] #tutorial-progress{color:#276c4a;font-weight:700;letter-spacing:.08em}
+#tutorial-dialog[data-step="5"] .tutorial-scoring-intro{display:grid;gap:14px;border-radius:16px;background:linear-gradient(135deg,#174b59,#0b6846);color:#f7fff8;padding:22px;margin-bottom:18px}
+#tutorial-dialog[data-step="5"] .tutorial-scoring-kicker{font-size:10px;line-height:1.5;letter-spacing:.12em;color:#c2f0d5;font-weight:700}
+#tutorial-dialog[data-step="5"] .tutorial-scoring-intro>strong{font-size:clamp(17px,3vw,23px);line-height:1.4}
+#tutorial-dialog[data-step="5"] .tutorial-scoring-breakdown{display:flex;align-items:center;justify-content:space-between;gap:5px}
+#tutorial-dialog[data-step="5"] .tutorial-scoring-breakdown>span:has(b){display:grid;place-items:center;gap:5px;min-width:0;flex:1;padding:12px 5px;border:1px solid #a7d8bc;border-radius:10px;background:#f2f9f3;color:#0b5338}
+#tutorial-dialog[data-step="5"] .tutorial-scoring-breakdown b{font-size:clamp(18px,3vw,26px)}
+#tutorial-dialog[data-step="5"] .tutorial-scoring-breakdown small{font-size:10px;text-align:center}
+#tutorial-dialog[data-step="5"] .tutorial-scoring-breakdown .tutorial-scoring-total{background:#f7e5aa;color:#563b0b;border-color:#eacb72}
+#tutorial-dialog[data-step="5"] .tutorial-scoring-intro p{font-size:12px;line-height:1.65;margin:0;color:#e3f5eb}
+#tutorial-dialog[data-step="5"] .tutorial-scoring-cards{display:flex;align-items:center;justify-content:center;gap:clamp(6px,2vw,16px);padding:18px 8px;border:1px solid #b7d4c3;border-radius:14px;background:#e1eee5;overflow-x:auto}
+#tutorial-dialog[data-step="5"] .tutorial-scoring-cards .card{flex-shrink:0}
+#tutorial-dialog[data-step="5"] .tutorial-note{background:#e1eee5;border:1px solid #b7d4c3;color:#214e35}
+#tutorial-dialog[data-step="5"] :is(button,[tabindex]):focus-visible{outline:3px solid #168457;outline-offset:3px}
+@media(max-width:450px){#tutorial-dialog[data-step="5"]{padding:18px 14px;border-radius:16px}#tutorial-dialog[data-step="5"] .tutorial-scoring-intro{padding:16px 10px}#tutorial-dialog[data-step="5"] .tutorial-scoring-breakdown{gap:3px}#tutorial-dialog[data-step="5"] .tutorial-scoring-breakdown>span:has(b){padding:10px 2px}#tutorial-dialog[data-step="5"] .tutorial-scoring-breakdown small{font-size:9px}#tutorial-dialog[data-step="5"] .tutorial-scoring-cards{padding:12px 6px}#tutorial-dialog[data-step="5"] .tutorial-scoring-cards .card{width:63px;height:91px}}
