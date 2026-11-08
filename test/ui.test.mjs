@@ -1001,3 +1001,14 @@ test('confirmation, invitation and mobile guide dialogs have accessible headings
   }
   assert.deepEqual(errors, []);
 });
+
+
+test('profile, hand and last-deal screens expose accessible region names', async t => {
+  const { page, errors } = await fixture(t, { width: 390, height: 844 });
+  assert.equal(await page.locator('#profile-dialog').getAttribute('aria-label'), 'Your player profile');
+  await open(page, 'Your cards');
+  assert.equal(await page.locator('.hand-view-groups').getAttribute('aria-label'), 'Your arranged hand');
+  assert.equal(await page.locator('#game-dialog').evaluate(el => el.scrollWidth <= el.clientWidth), true);
+  await page.keyboard.press('Escape');
+  assert.deepEqual(errors, []);
+});
