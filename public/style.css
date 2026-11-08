@@ -435,3 +435,19 @@ button.settings-option:disabled .settings-option-icon{opacity:.55}
 [data-player-presence=away],[data-player-presence=unknown],[data-player-presence=reconnecting]{filter:saturate(.72)}
 .player-presence[data-presence=away],.player-presence[data-presence=unknown],.player-presence[data-presence=reconnecting]{font-weight:700}
 @media(max-width:600px){.invalid-declaration-state{gap:12px;padding:14px}.invalid-declaration-icon{flex-basis:34px;width:34px;height:34px;font-size:21px}}
+
+/* Figma 11:65466 — declaration retry modal: navy surface and green title accent. */
+#game-dialog[data-panel=declaration]{width:min(600px,calc(100vw - 28px));max-height:min(88dvh,780px);border:1px solid #4b4774;border-radius:20px;background:#17162e;color:#f8faf7;box-shadow:0 28px 80px #070b1a99}
+#game-dialog[data-panel=declaration] .dialog-head{background:#e8f3e8;border-radius:14px 14px 0 0;padding:16px 20px;color:#083827}
+#game-dialog[data-panel=declaration] #game-panel-title{color:#083827;font-weight:800;letter-spacing:-.02em}
+#game-dialog[data-panel=declaration] .invalid-declaration-state{margin-top:14px;background:#2d2231;border-color:#9d564a;color:#fff1eb}
+#game-dialog[data-panel=declaration] .invalid-declaration-state h3{color:#fff6f0}
+#game-dialog[data-panel=declaration] .invalid-declaration-state .eyebrow{color:#f8bda5}
+#game-dialog[data-panel=declaration] .invalid-declaration-state .declaration-feedback{color:#f8d9ce}
+.declaration-retry-guidance{margin:16px 0 20px;padding:18px;border:1px solid #45496b;border-radius:14px;background:#23233e}
+.declaration-retry-guidance h4{margin:0 0 10px;font-size:17px;color:#bce2bf}
+.declaration-retry-guidance p{margin:8px 0;line-height:1.6;font-size:14px;color:#e0e5ef}
+.declaration-retry-actions{display:flex;gap:12px;flex-wrap:wrap}
+.declaration-retry-actions .button{min-height:46px;flex:1 1 180px}
+#game-dialog[data-panel=declaration] :focus-visible{outline:3px solid #a8dbb5;outline-offset:3px}
+@media(max-width:600px){#game-dialog[data-panel=declaration]{padding:12px;border-radius:15px}.declaration-retry-guidance{padding:14px}.declaration-retry-actions .button{flex-basis:100%}}
