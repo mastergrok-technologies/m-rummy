@@ -698,7 +698,8 @@ button.settings-option:disabled .settings-option-icon{opacity:.55}
 #game-dialog[data-panel="chat"] .message p{overflow-wrap:anywhere}
 #game-dialog[data-panel="standings"] .standings-summary{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
 #game-dialog[data-panel="standings"] .standings-table-wrap{max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;border-radius:10px}
-#game-dialog[data-panel="standings"] .standings-table{min-width:460px;width:100%}
+#game-dialog[data-panel="standings"] .standings-table{min-width:0;width:100%;table-layout:fixed}
+#game-dialog[data-panel="standings"] .standings-table th,#game-dialog[data-panel="standings"] .standings-table td{min-width:0;overflow-wrap:anywhere;word-break:normal}
 #game-dialog[data-panel="standings"] .standings-explainer{line-height:1.6}
 #game-dialog[data-panel="standings"] .standing-self{box-shadow:inset 3px 0 0 #168457}
 :is(#game-dialog[data-panel="settings"],#game-dialog[data-panel="chat"],#game-dialog[data-panel="standings"]) :is(button,input,textarea,[tabindex]):focus-visible{outline:3px solid #168457;outline-offset:3px}
