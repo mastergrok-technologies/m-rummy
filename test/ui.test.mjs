@@ -141,6 +141,12 @@ test('six-step tutorial supports back, finish, revisit and keyboard close', asyn
   assert.equal(await page.locator('#tutorial-dialog').evaluate(el => el.scrollWidth <= el.clientWidth), true);
   for (let step = 1; step <= 6; step++) {
     assert.equal(await page.locator('#tutorial-progress').textContent(), `Step ${step} of 6`);
+    if (step === 2) {
+      assert.equal(await page.locator('#tutorial-dialog').getAttribute('data-step'), '2');
+      assert.match(await page.locator('.tutorial-pure-intro').innerText(), /No substitute joker/i);
+      assert.equal(await page.locator('.tutorial-pure-cards .card').count(), 3);
+      assert.equal(await page.locator('#tutorial-dialog').evaluate(el => el.scrollWidth <= el.clientWidth), true);
+    }
     if (step === 3) {
       await page.locator('#tutorial-back').click();
       assert.equal(await page.locator('#tutorial-progress').textContent(), 'Step 2 of 6');
