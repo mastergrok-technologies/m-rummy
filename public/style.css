@@ -560,3 +560,17 @@ button.settings-option:disabled .settings-option-icon{opacity:.55}
 #tutorial-dialog[data-step="1"] .tutorial-note{border:1px solid #c3d8c8;background:#e1eee5;color:#204b32}
 #tutorial-dialog[data-step="1"] :is(button,[tabindex]):focus-visible{outline:3px solid #168457;outline-offset:3px}
 @media(max-width:450px){#tutorial-dialog[data-step="1"]{padding:18px 14px;border-radius:16px}#tutorial-dialog[data-step="1"] .tutorial-welcome{padding:18px 10px}#tutorial-dialog[data-step="1"] .tutorial-welcome-flow{gap:4px}#tutorial-dialog[data-step="1"] .tutorial-welcome-flow strong{width:58px;height:76px;font-size:26px}#tutorial-dialog[data-step="1"] .tutorial-welcome-flow small{font-size:10px}#tutorial-dialog[data-step="1"] .tutorial-flow-arrow{font-size:18px}}
+
+/* Tutorial 2: pure-sequence lesson (Figma 11:84428). */
+#tutorial-dialog[data-step="2"]{width:min(720px,calc(100vw - 24px));max-width:none;max-height:calc(100dvh - 24px);padding:24px;border:2px solid #a5d2bc;border-radius:22px;background:#f2f5f2;color:#083827;overflow-y:auto}
+#tutorial-dialog[data-step="2"] #tutorial-title{font-size:clamp(24px,4vw,34px);line-height:1.25;color:#083827;margin:8px 0 18px}
+#tutorial-dialog[data-step="2"] #tutorial-progress{color:#276c4a;font-weight:700;letter-spacing:.08em}
+#tutorial-dialog[data-step="2"] .tutorial-pure-intro{display:grid;gap:12px;border-radius:16px;background:#0b6846;color:#f7fff8;padding:22px;margin-bottom:18px}
+#tutorial-dialog[data-step="2"] .tutorial-pure-kicker{font-size:10px;line-height:1.5;letter-spacing:.12em;color:#c2f0d5;font-weight:700}
+#tutorial-dialog[data-step="2"] .tutorial-pure-intro strong{font-size:clamp(17px,3vw,23px);line-height:1.4}
+#tutorial-dialog[data-step="2"] .tutorial-pure-intro>span:last-child{font-size:14px;color:#e5f7eb}
+#tutorial-dialog[data-step="2"] .tutorial-pure-cards{display:flex;align-items:center;justify-content:center;gap:clamp(6px,2vw,16px);padding:18px 8px;border:1px solid #b7d4c3;border-radius:14px;background:#e1eee5;overflow-x:auto}
+#tutorial-dialog[data-step="2"] .tutorial-pure-cards .card{flex-shrink:0}
+#tutorial-dialog[data-step="2"] .tutorial-note{background:#e1eee5;border:1px solid #b7d4c3;color:#214e35}
+#tutorial-dialog[data-step="2"] :is(button,[tabindex]):focus-visible{outline:3px solid #168457;outline-offset:3px}
+@media(max-width:450px){#tutorial-dialog[data-step="2"]{padding:18px 14px;border-radius:16px}#tutorial-dialog[data-step="2"] .tutorial-pure-intro{padding:16px 14px}#tutorial-dialog[data-step="2"] .tutorial-pure-cards{padding:12px 6px}#tutorial-dialog[data-step="2"] .tutorial-pure-cards .card{width:63px;height:91px}}
