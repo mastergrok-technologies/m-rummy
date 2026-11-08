@@ -512,3 +512,20 @@ button.settings-option:disabled .settings-option-icon{opacity:.55}
 #game-dialog[data-panel=chat] .chat-count-warning{color:#ffd18a;font-weight:800}
 @media(max-width:600px){#game-dialog[data-panel=chat] .chat-form{gap:7px;padding:7px 8px}#game-dialog[data-panel=chat] .chat-emoji-toggle,#game-dialog[data-panel=chat] #dialog-chat-send{flex-basis:36px;width:36px;height:36px}#game-dialog[data-panel=chat] #dialog-chat-input{font-size:16px}}
 @media(prefers-reduced-motion:reduce){#game-dialog[data-panel=chat] .chat-form{transition:none}}
+
+/* Figma 11:83159 — Settings modal, responsive navigation and controls. */
+#game-dialog[data-panel=settings]{width:min(600px,calc(100vw - 24px));max-height:min(88dvh,800px);border-radius:20px;border:1px solid #565174;box-shadow:0 24px 75px #090c1a80}
+.settings-modal-context{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;margin-bottom:18px}
+.settings-modal-context .eyebrow{flex:1 1 100%;font-size:11px;letter-spacing:.11em}
+.settings-modal-context .settings-intro{margin:0;flex:1 1 230px}
+.settings-room-label{display:inline-flex;align-items:center;border:1px solid #ffffff36;border-radius:999px;padding:6px 11px;font-size:11px;font-weight:700;overflow-wrap:anywhere}
+#game-dialog[data-panel=settings] .settings-options{display:grid;gap:10px}
+#game-dialog[data-panel=settings] .settings-option{min-height:70px;border-radius:13px;transition:background .15s,border-color .15s}
+#game-dialog[data-panel=settings] button.settings-option:focus-visible{outline:3px solid #9fd5b1;outline-offset:3px}
+#game-dialog[data-panel=settings] .settings-option:disabled{opacity:.6;cursor:not-allowed}
+#game-dialog[data-panel=settings] .settings-preferences{margin-top:18px;border-radius:14px}
+.settings-preference-hint{font-size:12px;line-height:1.5;opacity:.78;margin:5px 0 14px}
+#game-dialog[data-panel=settings] .settings-preference{min-height:62px;gap:12px}
+#game-dialog[data-panel=settings] .settings-preference input:focus-visible{outline:3px solid #9fd5b1;outline-offset:3px}
+@media(max-width:600px){#game-dialog[data-panel=settings]{border-radius:14px;padding:12px}.settings-modal-context{gap:8px}.settings-room-label{max-width:100%}#game-dialog[data-panel=settings] .settings-option{min-height:64px}}
+@media(prefers-reduced-motion:reduce){#game-dialog[data-panel=settings] .settings-option{transition:none}}
