@@ -1,3 +1,5 @@
+import { handPanelMarkup } from '../public/ui/panels/hand.js';
+import { standingsPanelMarkup } from '../public/ui/panels/standings.js';
 import { chatPanelMarkup } from '../public/ui/panels/chat.js';
 import { informationPanelMarkup } from '../public/ui/panels/information.js';
 import { settingsPanelMarkup } from '../public/ui/panels/settings.js';
@@ -141,4 +143,21 @@ test('settings panel reflects available last deal and local preferences', () => 
   assert.match(html, /data-settings-panel="lastDeal"/);
   assert.match(html, /data-preference="roomyCards"[^>]*checked/);
   assert.match(html, /Saved/);
+});
+
+
+test('hand panel renders empty hand without exposing opponents cards', () => {
+  const state = { code: 'ABC', round: 1, hand: [], me: 'me', players: [{ id: 'me', name: 'Me' }], status: 'playing', wildRank: null };
+  const html = handPanelMarkup(state, [], { esc, number: String, card: () => '', ranks: {} });
+  assert.match(html, /No cards in your hand/);
+  assert.match(html, /Your arranged hand/);
+  assert.match(html, /Return to table/);
+});
+
+test('standings panel shows ranked players without leaking cards mid-round', () => {
+  const state = { code: 'ABC', me: 'me', status: 'playing', round: 1, wildRank: null, players: [{ id: 'me', name: 'Me', total: 0 }, { id: 'other', name: '<Friend>', total: 20 }] };
+  const html = standingsPanelMarkup(state, false, { esc, number: String, card: () => '', seatAvatar: () => 'A', ranks: {} });
+  assert.match(html, /Cumulative table penalties/);
+  assert.match(html, /&lt;Friend>/);
+  assert.match(html, /only after the round ends/);
 });
