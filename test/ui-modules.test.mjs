@@ -1,3 +1,5 @@
+import { lastDealPanelMarkup } from '../public/ui/panels/last-deal.js';
+import { bestDeclarationPanelMarkup, declarationPanelMarkup } from '../public/ui/panels/declaration.js';
 import { handPanelMarkup } from '../public/ui/panels/hand.js';
 import { standingsPanelMarkup } from '../public/ui/panels/standings.js';
 import { chatPanelMarkup } from '../public/ui/panels/chat.js';
@@ -160,4 +162,31 @@ test('standings panel shows ranked players without leaking cards mid-round', () 
   assert.match(html, /Cumulative table penalties/);
   assert.match(html, /&lt;Friend>/);
   assert.match(html, /only after the round ends/);
+});
+
+
+test('last-deal panel shows an empty state before the first completed round', () => {
+  assert.match(lastDealPanelMarkup(undefined, { esc, number: String }), /No completed round is available yet/);
+});
+
+test('last-deal panel escapes names and displays server-recorded penalties', () => {
+  const lastDeal = { round: 2, winner: '<Alice>', scores: [{ name: '<Bob>', penalty: 20, total: 40 }] };
+  const html = lastDealPanelMarkup(lastDeal, { esc, number: String });
+  assert.match(html, /&lt;Alice>/);
+  assert.match(html, /&lt;Bob>/);
+  assert.match(html, /Last completed round penalties/);
+  assert.doesNotMatch(html, /<Bob>/);
+});
+
+test('declaration guidance disables auto-group while reconnecting', () => {
+  const html = bestDeclarationPanelMarkup(false, 'reconnecting');
+  assert.match(html, /data-panel-action="arrange" disabled/);
+  assert.match(html, /not a guaranteed winning declaration/);
+});
+
+test('declaration retry escapes server error and preserves review action', () => {
+  const html = declarationPanelMarkup('<Invalid cards>', false, 'connected', esc);
+  assert.match(html, /&lt;Invalid cards>/);
+  assert.match(html, /Review cards &amp; retry/);
+  assert.match(html, /data-panel="bestDeclaration"/);
 });
