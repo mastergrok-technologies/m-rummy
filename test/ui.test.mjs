@@ -75,11 +75,11 @@ const close = page => page.getByRole('button', { name: 'Close table panel' }).cl
 test('table panels show private hand, real standings, settings and safe chat', async t => {
   const { page, room, errors } = await fixture(t);
   await open(page, 'View cards'); assert.equal(await page.locator('#game-dialog .card').count(), 13); await close(page);
-  await open(page, 'Standings'); assert.match(await page.locator('#game-dialog').innerText(), /Friend/); assert.equal(await page.locator('#game-dialog .card').count(), 0); await close(page);
+  await open(page, 'Standings'); assert.equal(await page.locator('.standings-table-wrap').getAttribute('aria-label'), 'Table standings and penalties'); assert.match(await page.locator('#game-dialog').innerText(), /Friend/); assert.equal(await page.locator('#game-dialog .card').count(), 0); await close(page);
   await open(page, 'Table info'); assert.match(await page.locator('#game-dialog').innerText(), /Free play/); await close(page);
-  await open(page, 'Settings'); await page.getByLabel('Spread out hand cards').check();
+  await open(page, 'Settings'); assert.match(await page.locator('.settings-accessibility-note').innerText(), /saved locally/i); await page.getByLabel('Spread out hand cards').check();
   assert.match(await page.locator('html').getAttribute('class'), /roomy-cards/); await close(page);
-  await open(page, 'Chat'); await page.locator('#dialog-chat-input').fill('<img src=x onerror=alert(1)>');
+  await open(page, 'Chat'); assert.equal(await page.locator('.chat-suggestions').getAttribute('aria-label'), 'Message suggestions'); await page.locator('#dialog-chat-input').fill('<img src=x onerror=alert(1)>');
   await page.locator('#dialog-chat-send').click();
   await page.locator('#game-dialog .message').waitFor();
   assert.equal(room.messages[0].text, '<img src=x onerror=alert(1)>');
