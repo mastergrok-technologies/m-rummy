@@ -377,6 +377,9 @@ test('waiting host sees six seats, invite flow and guarded bot/deal actions', as
   const f = await fixture(t, { width: 1920, height: 1080 }, false, { status: 'lobby', round: 0, hand: [], players: [waitingPlayer('me', 'Me')] });
   const { page, requests } = f;
   assert.equal(await page.locator('.waiting-seat').count(), 6);
+  assert.equal(await page.locator('.waiting-seats').getAttribute('role'), 'group');
+  assert.equal(await page.locator('.waiting-invite').getAttribute('aria-labelledby'), 'waiting-invite-title');
+  assert.equal(await page.locator('#messages').getAttribute('role'), 'log');
   assert.equal(await page.getByRole('progressbar', { name: 'Seats filled' }).getAttribute('aria-valuenow'), '1');
   assert.equal(await page.locator('.waiting-seat-open').count(), 5);
   assert.equal(await page.locator('.waiting-seat-self').innerText().then(s => s.includes('Me (you)')), true);
