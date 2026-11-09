@@ -1,3 +1,5 @@
+import { lastDealPanelMarkup } from './ui/panels/last-deal.js';
+import { bestDeclarationPanelMarkup, declarationPanelMarkup } from './ui/panels/declaration.js';
 import { standingsPanelMarkup } from './ui/panels/standings.js';
 import { handPanelMarkup } from './ui/panels/hand.js';
 import { settingsPanelMarkup } from './ui/panels/settings.js';
@@ -325,11 +327,11 @@ function renderGamePanel() {
   } else if (openGamePanel === 'settings') {
     content.innerHTML = settingsPanelMarkup(state, hasLastDeal, preferences, preferenceSaveMessage, { esc });
   } else if (openGamePanel === 'lastDeal') {
-    content.innerHTML = hasLastDeal ? `<p class="last-deal-summary" aria-label="Last completed round summary">Round ${number(lastDeal.round)}<strong>${esc(lastDeal.winner)} won</strong></p><div class="score-table-wrap"><table class="score-table"><caption class="sr-only">Last completed round penalties</caption><thead><tr><th scope="col">Player</th><th scope="col">Round penalty</th><th scope="col">Total penalty</th></tr></thead><tbody>${lastDeal.scores.map(p => `<tr><th scope="row">${esc(p.name)}</th><td>${number(p.penalty)}</td><td>${number(p.total)}</td></tr>`).join('')}</tbody></table></div><p class="last-deal-note">These are the server-recorded results of the last completed round at this table.</p>` : '<p class="last-deal-note">No completed round is available yet.</p>';
+    content.innerHTML = lastDealPanelMarkup(lastDeal, { esc, number });
   } else if (openGamePanel === 'bestDeclaration') {
-    content.innerHTML = `<section class="best-declaration-panel" aria-labelledby="best-declaration-heading"><span class="best-declaration-emblem" aria-hidden="true">♣</span><h3 id="best-declaration-heading">Build your strongest valid hand</h3><p>This is a grouping guide, not a guaranteed winning declaration. Your cards are checked by the server only when you choose Declare.</p><ol><li>Make at least two sequences.</li><li>Include at least one pure sequence.</li><li>Use valid sets or sequences for every remaining card.</li><li>When holding 14 cards, choose an eligible final discard.</li></ol><p class="best-declaration-note">Auto-group suggests an arrangement but does not submit a declaration or stop your turn timer.</p><div class="button-row"><button type="button" class="button primary" data-panel-action="arrange" ${busy || connection !== 'connected' ? 'disabled' : ''}>Auto-group my cards</button><button type="button" class="button secondary" data-panel="declaration">Back to retry</button></div></section>`;
+    content.innerHTML = bestDeclarationPanelMarkup(busy, connection);
   } else if (openGamePanel === 'declaration') {
-    content.innerHTML = `<section class="invalid-declaration-state" role="alert" aria-labelledby="declaration-error-heading"><span class="invalid-declaration-icon" aria-hidden="true">!</span><div><span class="eyebrow">DECLARATION NOT ACCEPTED</span><h3 id="declaration-error-heading">Your cards need another look</h3><p class="declaration-feedback">${esc(declarationError)}</p></div></section><div class="declaration-retry-guidance"><h4>Prepare your best possible declaration</h4><p>Check for two sequences, including at least one pure sequence, and valid groups covering your remaining 13 cards.</p><p><strong>Your turn is still active.</strong> No declaration penalty was applied; the server timer continues.</p></div><div class="button-row declaration-retry-actions"><button class="button primary" data-close="game-dialog">Review cards &amp; retry</button><button class="button secondary" data-panel-action="arrange" ${busy || connection !== 'connected' ? 'disabled' : ''}>Auto-group</button><button type="button" class="button secondary" data-panel="bestDeclaration">Best possible declaration guide</button></div>`;
+    content.innerHTML = declarationPanelMarkup(declarationError, busy, connection, esc);
   }
   if (panelFromSettings && ['information', 'lastDeal'].includes(openGamePanel)) content.insertAdjacentHTML('beforeend', '<button type="button" class="button secondary settings-back" data-settings-panel="settings">Back to settings</button>');
   if (focused === 'dialog-chat-input') {

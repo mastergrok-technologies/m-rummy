@@ -37,3 +37,7 @@ This PR starts the modularization without changing backend routes or deployment 
 ## Phase 6: hand and standings dialogs
 
 `public/ui/panels/hand.js` owns arranged-hand inspection markup. `public/ui/panels/standings.js` owns ranked scores and optional revealed hands. The app retains dialog lifecycle, state and disclosure preservation. Last-deal and declaration panels remain to be extracted in a later PR.
+
+## Phase 7: last-deal and declaration dialogs
+
+`public/ui/panels/last-deal.js` renders server-recorded round penalties and the empty state. `public/ui/panels/declaration.js` renders invalid-declaration retry and best-declaration guidance. The controller continues to own errors, dialog lifecycle, timers, event handling and connection status.
