@@ -1,3 +1,4 @@
+import { homeMarkup, homeTablesMarkup } from './ui/home.js';
 import { lastDealPanelMarkup } from './ui/panels/last-deal.js';
 import { bestDeclarationPanelMarkup, declarationPanelMarkup } from './ui/panels/declaration.js';
 import { standingsPanelMarkup } from './ui/panels/standings.js';
@@ -18,7 +19,7 @@ const ranks = { 0: 'JK', 1: 'A', 11: 'J', 12: 'Q', 13: 'K' };
 let session, state, busy = false, polling = false, failures = 0, mode = 'create', groups = [], selected = new Set(), chatDraft = '', clockOffset = 0;
 let lastCode = '', confirmAction;
 let connection = 'connected';
-let tables = [], tableLimit = 3, tableEpoch = 0;
+let tables = [], tableLimit = 3, tableEpoch = 0, homeTab = 'points', pendingHomeInvite = '';
 const tableUi = new Map();
 const presenceClient = [...crypto.getRandomValues(new Uint8Array(16))].map(n => n.toString(16).padStart(2, '0')).join('');
 let presenceSequence = 0;
@@ -86,6 +87,12 @@ function accept(next) {
   updateClock(); renderTableSwitcher(); syncControls(); if (changed) renderGamePanel();
 }
 function landing() {
+  if (account) {
+    const invite = new URLSearchParams(location.search).get('room') || '';
+    if (/^[a-fA-F0-9]{12}$/.test(invite) && !tables.some(t => t.code === invite.toUpperCase())) pendingHomeInvite = invite;
+    showHome('points');
+    return;
+  }
   state = null; selected.clear(); groups = [];
   document.querySelector('#game-dialog')?.close();
   app.className = 'landing';
@@ -102,6 +109,39 @@ function landing() {
     badge.innerHTML = `<span>Welcome back, ${esc(account.name)}</span><strong>♣ ${number(account.points)} play points</strong>`;
     document.querySelector('.entry-card').prepend(badge);
   }
+}
+function showHome(tab = homeTab) {
+  if (!account) return;
+  stashTableUi(); tableEpoch++;
+  state = null; selected.clear(); groups = []; chatDraft = ''; homeTab = tab;
+  document.querySelector('#game-dialog').close();
+  history.replaceState({}, '', '/'); app.className = 'home-page';
+  app.innerHTML = homeMarkup(account, tables, tableLimit, homeTab, esc, number) + connectionNotice();
+  refreshHomeTables(); syncControls();
+}
+function refreshHomeTables() {
+  const root = document.querySelector('#home-table-list');
+  if (!root) return;
+  const markup = homeTablesMarkup(tables, esc);
+  if (root.dataset.markup !== markup) {
+    const focusedCode = document.activeElement?.dataset.switchTable;
+    root.innerHTML = markup; root.dataset.markup = markup;
+    if (focusedCode) (root.querySelector(`[data-switch-table="${CSS.escape(focusedCode)}"]`) || document.querySelector('[data-home-tab="joined"]'))?.focus();
+  }
+  const count = document.querySelector('.home-section-heading>span');
+  if (count) count.textContent = `${tables.length} / ${tableLimit} joined`;
+  const badge = document.querySelector('[data-home-tab="joined"] span');
+  if (badge) badge.textContent = tables.length;
+  document.querySelector('#home-limit-note').hidden = tables.length < tableLimit;
+  updateTableClocks();
+}
+function openTableEntry(entryMode = 'create', code = '') {
+  if (busy || connection !== 'connected' || !account || tables.length >= tableLimit) return;
+  document.querySelector('#table-entry-form').reset(); setTableEntryMode(entryMode);
+  document.querySelector('#new-table-code').value = code.toUpperCase();
+  document.querySelector('#table-entry-error').textContent = '';
+  document.querySelector('#tables-dialog').showModal();
+  document.querySelector(entryMode === 'join' ? '#new-table-code' : '#new-table-password').focus();
 }
 function setAccount(next) {
   account = next;
@@ -161,7 +201,7 @@ function updateConnectionNotice() {
 }
 function roomChrome() {
   return `<div class="room-heading"><div><div class="eyebrow">YOUR PRIVATE CLUB <span class="connection" id="connection" tabindex="-1">● Connected</span></div><h1>The friends’ table<span class="round-badge">${state.round ? `Round ${state.round}` : 'Waiting room'}</span></h1></div><div class="button-row"><button class="button secondary small" data-action="invite">Invite friends <span>↗</span></button><button class="icon-button leave-button" data-action="leave" aria-label="Leave table" title="Leave table">${state.status === 'lobby' ? '<img src="/assets/figma/arrow-left.svg" alt="" width="24" height="24">' : '⇥'}</button></div></div>
-  <div id="table-switcher"></div><nav class="board-toolbar" aria-label="Table tools"><button class="button secondary small" data-action="tutorial">Learn rummy</button><button class="button secondary small" data-panel="chat">Chat</button><button class="button secondary small" data-panel="hand" ${!state.hand.length ? 'disabled' : ''}>View cards</button><button class="button secondary small" data-panel="standings">Standings</button><button class="button secondary small" data-panel="information">Table info</button><button class="button secondary small" data-panel="settings">Settings</button></nav>
+  <div id="table-switcher"></div><nav class="board-toolbar" aria-label="Table tools"><button type="button" class="button secondary small" data-home>Home</button><button class="button secondary small" data-action="tutorial">Learn rummy</button><button class="button secondary small" data-panel="chat">Chat</button><button class="button secondary small" data-panel="hand" ${!state.hand.length ? 'disabled' : ''}>View cards</button><button class="button secondary small" data-panel="standings">Standings</button><button class="button secondary small" data-panel="information">Table info</button><button class="button secondary small" data-panel="settings">Settings</button></nav>
   ${connectionNotice()}<div id="command-status" class="sr-only" role="status"></div>
 `;
 }
@@ -232,9 +272,10 @@ function updateTableClocks() {
 }
 function acceptTableList(result) {
   tables = result.tables; tableLimit = result.tableLimit; clockOffset = result.serverTime - Date.now();
-  renderTableSwitcher();
+  renderTableSwitcher(); refreshHomeTables();
 }
 function tablePicker() {
+  if (account) { showHome('joined'); return; }
   state = null; selected.clear(); groups = []; chatDraft = '';
   document.querySelector('#game-dialog').close();
   if (!tables.length) { history.replaceState({}, '', '/'); landing(); return; }
@@ -255,11 +296,13 @@ async function switchTable(code) {
   finally { busy = false; syncControls(); }
 }
 async function restoreTables() {
-  let preferred = new URLSearchParams(location.search).get('room');
+  const invite = new URLSearchParams(location.search).get('room')?.toUpperCase();
+  let preferred = invite;
   try { preferred ||= sessionStorage.getItem('mr-active-table'); } catch { /* Optional recovery hint. */ }
   const memberships = session.rooms || (session.room ? [session.room] : []);
   const code = memberships.includes(preferred) ? preferred : memberships[0];
   const result = await request(`/api/tables${code ? `?code=${encodeURIComponent(code)}` : ''}`); acceptTableList(result);
+  if (account && /^[A-F0-9]{12}$/.test(invite || '') && !memberships.includes(invite)) { landing(); return; }
   if (result.active) { accept(result.active); history.replaceState({}, '', `/?room=${state.code}`); }
   else if (!tables.length) landing();
   else tablePicker();
@@ -364,8 +407,15 @@ function updatePresence() {
 }
 function syncControls(fresh = false) {
   updateConnectionNotice();
-  for (const button of document.querySelectorAll('[data-switch-table], [data-add-table], #table-entry-form button[type="submit"]')) button.disabled = busy || connection !== 'connected' || (button.hasAttribute('data-add-table') && tables.length >= tableLimit);
+  for (const button of document.querySelectorAll('[data-switch-table], [data-add-table], [data-home-entry], #table-entry-form button[type="submit"]')) button.disabled = busy || connection !== 'connected' || ((button.hasAttribute('data-add-table') || button.hasAttribute('data-home-entry')) && tables.length >= tableLimit);
+  for (const button of document.querySelectorAll('[data-home], [data-home-tab]')) button.disabled = busy;
   if (!state) {
+    if (pendingHomeInvite && !busy && connection === 'connected') {
+      const invite = pendingHomeInvite; pendingHomeInvite = '';
+      if (tables.length < tableLimit) openTableEntry('join', invite);
+      else toast('All your table seats are in use. Leave a table between rounds before joining this invite.', true);
+    }
+    app.setAttribute('aria-busy', String(busy));
     return;
   }
   const blocked = busy || connection !== 'connected';
@@ -423,7 +473,7 @@ async function action(actionName, extra = {}) {
   finally { busy = false; syncControls(); }
 }
 async function poll() {
-  if ((!state && !tables.length) || polling || busy) return;
+  if ((!account && !state && !tables.length) || polling || busy) return;
   polling = true; const code = state?.code, epoch = tableEpoch;
   if (connection !== 'connected') setConnection('syncing');
   try {
@@ -432,7 +482,7 @@ async function poll() {
     failures = 0; acceptTableList(result);
     if (result.active) accept(result.active);
     else if (state) { stashTableUi(); tableUi.delete(code); tablePicker(); toast('Your selected table closed. Choose another table.', true); }
-    else if (!tables.length) tablePicker();
+    else if (!tables.length && !document.querySelector('.home-page')) tablePicker();
     setConnection('connected');
   } catch (e) {
     if (busy || epoch !== tableEpoch || code !== state?.code) return;
@@ -593,16 +643,16 @@ function setTableEntryMode(mode) {
 document.addEventListener('click', event => {
   const button = event.target.closest('button'); if (!button || button.disabled) return;
   if (button.dataset.switchTable) { switchTable(button.dataset.switchTable); return; }
-  if (button.hasAttribute('data-add-table') && !busy && connection === 'connected' && tables.length < tableLimit) {
-    document.querySelector('#table-entry-form').reset(); setTableEntryMode('create');
-    document.querySelector('#table-entry-error').textContent = '';
-    document.querySelector('#tables-dialog').showModal();
-  }
+  if (button.hasAttribute('data-home') && !busy) { showHome('joined'); return; }
+  if (button.dataset.homeTab && !busy) { showHome(button.dataset.homeTab); document.querySelector(`[data-home-tab="${homeTab}"]`).focus(); return; }
+  if (button.hasAttribute('data-home-profile')) { loadProfile(); return; }
+  if (button.dataset.homeEntry) { openTableEntry(button.dataset.homeEntry); return; }
+  if (button.hasAttribute('data-add-table')) openTableEntry('create');
   if (button.dataset.tableMode) setTableEntryMode(button.dataset.tableMode);
 });
 document.querySelector('#table-entry-form').addEventListener('submit', async event => {
   event.preventDefault(); if (busy || connection !== 'connected') return;
-  const data = Object.fromEntries(new FormData(event.target));
+  const data = { ...Object.fromEntries(new FormData(event.target)), name: account?.name };
   stashTableUi(); tableEpoch++; busy = true; syncControls();
   document.querySelector('#table-entry-error').textContent = '';
   try {
@@ -623,6 +673,10 @@ document.querySelector('#tutorial-next').addEventListener('click', () => {
     try { localStorage.setItem('mr-tutorial-complete', 'true'); } catch { /* Completion is optional. */ }
     document.querySelector('#tutorial-dialog').close(); toast('Tutorial complete. You can revisit it from How to play.');
   }
+});
+document.querySelector('.brand').addEventListener('click', event => {
+  if (!account) return;
+  event.preventDefault(); if (!busy) showHome('points');
 });
 document.querySelector('#rules-button').addEventListener('click', () => document.querySelector('#rules-dialog').showModal());
 document.querySelector('#mobile-button').addEventListener('click', () => document.querySelector('#mobile-dialog').showModal());
