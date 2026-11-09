@@ -74,6 +74,11 @@ const close = page => page.getByRole('button', { name: 'Close table panel' }).cl
 
 test('table panels show private hand, real standings, settings and safe chat', async t => {
   const { page, room, errors } = await fixture(t);
+  assert.equal(await page.locator('.hand-panel').getAttribute('aria-labelledby'), 'player-hand-title');
+  assert.equal(await page.locator('.hand-tools').getAttribute('aria-label'), 'Arrange your cards');
+  assert.equal(await page.locator('.hand-scroll').getAttribute('tabindex'), '0');
+  assert.equal(await page.locator('.sidebar').getAttribute('aria-label'), 'Table conversation and activity');
+  assert.equal(await page.locator('.sidebar #messages').getAttribute('role'), 'log');
   await open(page, 'View cards'); assert.equal(await page.locator('#game-dialog .card').count(), 13); await close(page);
   await open(page, 'Standings'); assert.equal(await page.locator('.standings-table-wrap').getAttribute('aria-label'), 'Table standings and penalties'); assert.match(await page.locator('#game-dialog').innerText(), /Friend/); assert.equal(await page.locator('#game-dialog .card').count(), 0); await close(page);
   await open(page, 'Table info'); assert.equal(await page.locator('.info-overview').getAttribute('role'), 'group'); assert.match(await page.locator('#game-dialog').innerText(), /Free play/); await close(page);
