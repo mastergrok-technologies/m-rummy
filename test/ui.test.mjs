@@ -7,7 +7,7 @@ import { readFile, mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 
-async function fixture(t, viewport = { width: 1920, height: 1080 }, multi = false, initial = {}) {
+async function fixture(t, viewport = { width: 1920, height: 1080 }, multi = false, initial = {}, entry = {}) {
   const browser = await chromium.launch({ ...(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {}) });
   t.after(() => browser.close());
   const page = await browser.newPage({ viewport });
@@ -17,7 +17,7 @@ async function fixture(t, viewport = { width: 1920, height: 1080 }, multi = fals
     players: [{ id: 'me', name: 'Me', total: 0, turns: 0, count: 13 }, { id: 'other', name: 'Friend', total: 10, count: 13 }],
     indicator: { id: 'wild', rank: 5, suit: 'C' }, wildRank: 5, stockCount: 70, topDiscard: { id: 'discard', rank: 6, suit: 'S' }, messages: [], activity: [], history: [], account: { name: 'Me', points: 10000 } };
   Object.assign(room, initial);
-  const rooms = new Map([[room.code, room]]);
+  const rooms = new Map(entry.empty ? [] : [[room.code, room]]);
   if (multi) rooms.set('BBBBBB123456', { ...structuredClone(room), code: 'BBBBBB123456', deadline: Date.now() + 45000, hand: hand.map(c => ({ ...c, suit: 'S' })), messages: [] });
   const requests = [];
   let offline = false, hold = false, held, holdPoll = false, pollStarted, releasePoll, rejectChat = false;
@@ -65,8 +65,8 @@ async function fixture(t, viewport = { width: 1920, height: 1080 }, multi = fals
       return route.fulfill({ body: await readFile(resolve('public', file)), contentType });
     } catch { return route.fulfill({ status: 404 }); }
   });
-  await page.goto('http://rummy.test/');
-  await page.locator('#connection').waitFor();
+  await page.goto(`http://rummy.test/${entry.invite ? `?room=${entry.invite}` : ''}`);
+  await page.locator(entry.empty ? '.home-page' : '#connection').waitFor();
   return { page, room, rooms, requests, errors, rejectNextChat: () => { rejectChat = true; }, holdNextPoll: () => { holdPoll = true; return new Promise(r => { pollStarted = r; }); }, releasePoll: () => releasePoll?.(), setOffline: value => { offline = value; }, hold: () => { hold = true; }, release: () => { hold = false; held?.(); } };
 }
 const open = (page, name) => page.getByRole('button', { name, exact: true }).click();
@@ -1028,4 +1028,78 @@ test('account and table navigation expose accessible names on mobile', async t =
   assert.equal(await page.locator('.table-switcher').getAttribute('tabindex'), '0');
   assert.equal(await page.locator('.table-switcher').evaluate(el => el.clientWidth <= 390), true);
   assert.deepEqual(errors, []);
+});
+
+test('home navigation preserves private card selection and local groups when rejoining', async t => {
+  const { page, room, requests, errors } = await fixture(t, { width: 390, height: 844 }, true);
+  await page.locator('[data-card="card-0"]').click();
+  await page.locator('[data-home]').click();
+  await page.locator('.home-table').first().waitFor();
+  assert.equal(await page.locator('[data-card]').count(), 0);
+  assert.equal(await page.locator('.home-table').count(), 2);
+  assert.equal(await page.locator('[data-home-tab="joined"]').getAttribute('aria-current'), 'page');
+  await page.locator('[data-home-tab="points"]').click();
+  await page.locator('.home-intro').waitFor();
+  await waitingScreenshot(page, 'home-points-mobile');
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  await page.locator(`[data-switch-table="${room.code}"]`).click();
+  await page.locator('[data-card="card-0"][aria-pressed="true"]').waitFor();
+  assert.equal(requests.length, 0);
+  assert.deepEqual(errors, []);
+});
+
+for (const viewport of [{ width: 360, height: 800 }, { width: 768, height: 1024 }, { width: 1920, height: 1080 }]) {
+  test(`empty lobby supports tabs, locally bundled artwork and create/join at ${viewport.width}px`, async t => {
+    const { page, rooms, errors } = await fixture(t, viewport, false, {}, { empty: true });
+    await page.getByText('No tables joined yet', { exact: true }).waitFor();
+    await waitingScreenshot(page, `home-points-empty-${viewport.width}`);
+    await page.locator('[data-home-tab="joined"]').click();
+    assert.equal(await page.locator('.home-table').count(), 0);
+    await waitingScreenshot(page, `home-joined-empty-${viewport.width}`);
+    assert.equal(await page.locator('[data-home-entry="join"]').isEnabled(), true);
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    for (const img of await page.locator('.home-tabs img').all()) {
+      assert.equal(await img.evaluate(el => el.complete && el.naturalWidth > 0), true);
+    }
+    await page.locator('[data-home-entry="join"]').click();
+    await page.locator('#new-table-code').fill('DDDDDD123456');
+    await page.locator('#new-table-password').fill('wrong');
+    await page.locator('#table-entry-submit').click();
+    await page.waitForFunction(() => document.querySelector('#table-entry-error').textContent.includes('Incorrect'));
+    assert.equal(await page.locator('#new-table-code').inputValue(), 'DDDDDD123456');
+    await page.locator('#new-table-password').fill('friends');
+    await page.locator('#table-entry-submit').click();
+    await page.waitForURL('**/?room=DDDDDD123456');
+    assert.equal(rooms.size, 1);
+    await page.locator('[data-home]').click();
+    await page.locator('[data-home-entry="create"]').click();
+    await page.locator('#table-entry-submit').click();
+    await page.waitForURL('**/?room=CCCCCC123456');
+    assert.equal(rooms.size, 2);
+    assert.deepEqual(errors, []);
+  });
+}
+
+test('invite links prefill the shared join form from an empty lobby', async t => {
+  const { page } = await fixture(t, undefined, false, {}, { empty: true, invite: 'DDDDDD123456' });
+  await page.locator('#tables-dialog[open]').waitFor();
+  assert.equal(await page.locator('#new-table-code').inputValue(), 'DDDDDD123456');
+  assert.notEqual(await page.locator('#new-table-code').getAttribute('required'), null);
+});
+
+test('home respects the table cap and resynchronizes before actions after disconnection', async t => {
+  const f = await fixture(t, undefined, true); const { page } = f;
+  await page.locator('[data-home]').click();
+  await page.locator('[data-home-entry="create"]').click();
+  await page.locator('#table-entry-submit').click();
+  await page.waitForURL('**/?room=CCCCCC123456');
+  await page.locator('[data-home]').click();
+  assert.equal(await page.locator('[data-home-entry="join"]').isDisabled(), true);
+  assert.equal(await page.locator('[data-home-entry="create"]').isDisabled(), true);
+  f.setOffline(true); await page.evaluate(() => window.dispatchEvent(new Event('offline')));
+  assert.equal(await page.locator('[data-switch-table]').first().isDisabled(), true);
+  f.setOffline(false); await page.evaluate(() => window.dispatchEvent(new Event('online')));
+  await page.waitForFunction(() => !document.querySelector('[data-switch-table]').disabled);
+  assert.equal(await page.locator('[data-home-entry="create"]').isDisabled(), true);
+  assert.equal(await page.locator('.home-table').count(), 3);
 });

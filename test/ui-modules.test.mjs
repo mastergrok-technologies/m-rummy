@@ -190,3 +190,26 @@ test('declaration retry escapes server error and preserves review action', () =>
   assert.match(html, /Review cards &amp; retry/);
   assert.match(html, /data-panel="bestDeclaration"/);
 });
+
+test('home renders private tables, escapes identity and exposes the membership limit', async () => {
+  const { homeMarkup } = await import('../public/ui/home.js');
+  const html = homeMarkup({ name: '<script>', points: 10000 }, [{ code: '<room>', playerCount: 2, status: 'playing', yourTurn: true }], 1, 'joined', esc, String);
+  assert.match(html, /&lt;script>/);
+  assert.match(html, /&lt;room>/);
+  assert.doesNotMatch(html, /<script>|<room>/);
+  assert.match(html, /Your turn/);
+  assert.match(html, /data-home-entry="create" disabled/);
+  assert.match(html, /data-home-entry="join" disabled/);
+  assert.match(html, /data-home-tab="joined" aria-current="page"/);
+  assert.doesNotMatch(html, /₹|Entry amount|deposit|cash prize/i);
+});
+
+test('home covers waiting, watching, completed and empty memberships', async () => {
+  const { homeMarkup, homeTablesMarkup } = await import('../public/ui/home.js');
+  const empty = homeMarkup({ name: 'Me', points: 10000 }, [], 3, 'points', esc, String);
+  assert.match(empty, /No tables joined yet/);
+  assert.match(empty, /data-home-entry="create" >/);
+  assert.match(empty, /data-home-tab="points" aria-current="page"/);
+  const html = homeTablesMarkup([{code: 'A', status: 'lobby', playerCount: 2}, {code: 'B', status: 'playing', dropped: true, playerCount: 6}, {code: 'C', status: 'finished', playerCount: 3}], esc);
+  for (const label of ['Waiting for players', 'Watching', 'Round complete']) assert.ok(html.includes(label));
+});

@@ -5,6 +5,7 @@ The browser entry point is `public/app.js`. It owns session state, networking, t
 | Module | Responsibility | Dependencies |
 | --- | --- | --- |
 | `public/app.js` | State, requests, polling, event handlers, view orchestration | UI modules, board-state, tutorial |
+| `public/ui/home.js` | Private-table lobby, Points/Joined navigation, live membership cards and empty state | Caller-provided account, memberships and formatting helpers |
 | `public/ui/account.js` | Registration and sign-in form markup | None |
 | `public/ui/tables.js` | Joined-table navigation and multi-table picker markup | Caller-provided data and HTML escape function |
 | `public/ui/profile.js` | Player profile, stats and paginated points-history markup | Caller-provided profile, offset and formatting functions |
