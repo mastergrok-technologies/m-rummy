@@ -28,3 +28,30 @@ export function presencePresentation(value) {
   const status = Object.hasOwn(labels, value) ? value : 'unknown';
   return { status, label: labels[status] };
 }
+
+export const handIdentity = hand => JSON.stringify(hand.map(card => card.id).sort());
+export function arrangementSnapshot(groups, selected, hand) {
+  const available = new Set(hand.map(card => card.id));
+  return { handKey: handIdentity(hand), groups: reconcileGroups(groups, hand), selected: [...selected].filter(id => available.has(id)) };
+}
+export function cardDescription(card) {
+  if (!card) return '';
+  if (card.rank === 0) return 'Printed joker';
+  const rank = ({ 1: 'Ace', 11: 'Jack', 12: 'Queen', 13: 'King' })[card.rank] || String(card.rank);
+  return `${rank} of ${({ H: 'hearts', D: 'diamonds', C: 'clubs', S: 'spades' })[card.suit] || 'cards'}`;
+}
+/** Describe only the selected player's current, server-supplied phase. */
+export function gameplayGuidance(room, selected) {
+  const me = room.players.find(player => player.id === room.me);
+  const picked = room.hand.filter(card => selected.has(card.id));
+  const card = picked.length === 1 ? picked[0] : null;
+  const base = { selectedCard: card, selectedCount: picked.length, canDiscard: false };
+  if (room.status !== 'playing') return { ...base, step: 'finished', title: 'Round complete', detail: 'Review the results or wait for the next deal.' };
+  if (me?.dropped) return { ...base, step: 'watching', title: 'You are watching this round', detail: 'You will rejoin when the next round starts.' };
+  if (room.turn !== room.me) return { ...base, step: 'waiting', title: `${room.players.find(player => player.id === room.turn)?.name || 'Another player'} is playing`, detail: 'You can select and arrange your cards while you wait.' };
+  if (room.phase === 'draw') return { ...base, step: 'draw', title: 'Your turn · Draw one card', detail: 'Choose the closed deck or an eligible card from the open deck.' };
+  if (room.phase !== 'discard') return { ...base, step: 'waiting', title: 'Waiting for your table', detail: 'Actions resume after the next table update.' };
+  if (!card) return { ...base, step: 'select', title: picked.length ? 'Choose just one discard' : 'Select your discard', detail: picked.length ? `${picked.length} cards selected. Clear the selection, then pick one card to discard.` : 'Tap one card in your hand. Discard it, or declare when the rest of your hand is valid.' };
+  if (card.id === room.drawnOpen) return { ...base, step: 'blocked', title: 'Choose a different discard', detail: 'You just picked this card from the open deck. It cannot be your discard on this turn.' };
+  return { ...base, canDiscard: true, step: 'ready', title: `Selected: ${cardDescription(card)}`, detail: 'Discard this card to end your turn, or declare if the remaining 13 cards form a valid hand.' };
+}
