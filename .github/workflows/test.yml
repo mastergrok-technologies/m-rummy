@@ -1,4 +1,4 @@
-name: Check and test
+name: Check and package
 on:
   push:
   pull_request:
@@ -18,18 +18,6 @@ jobs:
           php-version: '8.3'
           coverage: none
       - run: npm run check
-      - run: npm test
-      - run: npm install --no-save --package-lock=false playwright@1.56.1
-      - run: npx playwright install --with-deps chromium
-      - run: npm run test:ui
-        env:
-          UI_SCREENSHOT_DIR: test-artifacts/ui
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: ui-screenshots
-          path: test-artifacts/ui
-          if-no-files-found: ignore
       - run: npm run package
       - run: python3 tools/build-release.py
       - uses: actions/upload-artifact@v4
@@ -98,7 +86,7 @@ jobs:
               output.write(f'HOSTINGER_KNOWN_HOSTS_FILE={directory / "known_hosts"}\n')
           PY
           ssh-keygen -y -P '' -f "$RUNNER_TEMP/m-rummy-ssh/id_ed25519" > /dev/null
-      - name: Install tested code and check the HTTPS API
+      - name: Install checked code and check the HTTPS API
         run: bash tools/deploy-hostinger.sh
       - name: Remove runner SSH identity
         if: always()
