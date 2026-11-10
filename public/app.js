@@ -11,7 +11,8 @@ import { chatPanelMarkup } from './ui/panels/chat.js';
 import { gameplayMarkup } from './ui/gameplay.js';
 import { waitingRoomMarkup } from './ui/waiting-room.js';
 import { profileMarkup } from './ui/profile.js';
-import { accountFormMarkup } from './ui/account.js';
+import { inviteCode } from './ui/invite.js';
+import { accountFormMarkup, accountValidation } from './ui/account.js';
 import { joinedTablesMarkup, tablePickerMarkup } from './ui/tables.js';
 import { tutorialTopicsMarkup, tutorialPracticeMarkup } from './ui/tutorial.js';
 import { tutorialSteps } from './tutorial.js';
@@ -41,6 +42,7 @@ function applyPreferences() {
 applyPreferences();
 const groupKey = room => `mr-groups-${room.code}-${room.round}`;
 const commandSelector = '[data-draw], [data-remove], [data-action="start"], [data-action="addBot"], [data-action="drop"], [data-action="discard"], [data-action="declare"], [data-action="arrange"], [data-action="leave"], #chat-form button';
+const authIdentity = { name: '', username: '' };
 let authMode = 'register', account = null, profileOffset = 0, authBusy = false;
 let profileFilter = 'all', profileBusy = false, profileEpoch = 0, profileData = null;
 let accountPage = null, accountPageEpoch = 0, feedbackDraft = { category: 'idea', message: '', id: null };
@@ -157,6 +159,8 @@ function openTableEntry(entryMode = 'create', code = '') {
   document.querySelector('#table-entry-form').reset(); setTableEntryMode(entryMode);
   document.querySelector('#new-table-code').value = code.toUpperCase();
   document.querySelector('#table-entry-error').textContent = '';
+  document.querySelector('#new-table-code').removeAttribute('aria-invalid');
+  updateInvitePreview();
   document.querySelector('#tables-dialog').showModal();
   document.querySelector(entryMode === 'join' ? '#new-table-code' : '#new-table-password').focus();
 }
@@ -169,6 +173,25 @@ function setAccount(next) {
 }
 function renderAuth() {
   document.querySelector('.entry-card').innerHTML = accountFormMarkup(authMode === 'register');
+  for (const key of ['name','username']) { const input = document.querySelector(`#account-${key}`); if (input) input.value = authIdentity[key]; }
+  syncAuthControls();
+}
+function syncAuthControls() {
+  const form = document.querySelector('#auth-form'); if (!form) return;
+  form.setAttribute('aria-busy', String(authBusy));
+  for (const control of document.querySelectorAll('#auth-form input, #auth-form button, [data-auth-mode]')) control.disabled = authBusy;
+}
+function authError(message, field) {
+  const status = document.querySelector('#auth-error'); if (!status) return;
+  status.textContent = message;
+  const input = field && document.getElementById(field);
+  if (input) { input.setAttribute('aria-invalid','true'); input.focus(); }
+  else status.focus();
+}
+function changeAuthMode(next) {
+  if (authBusy || !['register','login'].includes(next) || next === authMode) return;
+  for (const key of ['name','username']) { const input = document.querySelector(`#account-${key}`); if (input) authIdentity[key] = input.value; }
+  authMode = next; renderAuth(); document.querySelector(`[data-auth-mode="${next}"]`).focus();
 }
 function syncProfileControls() {
   const root = document.querySelector('#profile-content');
@@ -542,7 +565,8 @@ function updatePresence() {
   }
 }
 function syncControls(fresh = false) {
-  updateConnectionNotice(); syncProfileControls(); syncAccountPageControls(); syncChatIndicators();
+  for (const control of document.querySelectorAll('#table-entry-form input, [data-table-mode]')) control.disabled = busy;
+  syncAuthControls(); updateConnectionNotice(); syncProfileControls(); syncAccountPageControls(); syncChatIndicators();
   for (const button of document.querySelectorAll('[data-switch-table], [data-attention-table], [data-add-table], [data-home-entry], #table-entry-form button[type="submit"]')) button.disabled = busy || connection !== 'connected' || ((button.hasAttribute('data-add-table') || button.hasAttribute('data-home-entry')) && tables.length >= tableLimit);
   for (const button of document.querySelectorAll('[data-home], [data-results-home], [data-home-tab], [data-home-filter]')) button.disabled = busy;
   if (!state) {
@@ -646,7 +670,12 @@ app.addEventListener('click', async event => {
   const target = event.target.closest('button'); if (!target || target.disabled) return;
   if (target.id === 'connection-retry') { if (!busy && !polling && connection !== 'connected') poll(); return; }
   if (target.dataset.panel) { showGamePanel(target.dataset.panel); return; }
-  if (target.dataset.authMode) { if (authBusy) return; authMode = target.dataset.authMode; renderAuth(); return; }
+  if (target.dataset.authMode) { changeAuthMode(target.dataset.authMode); return; }
+  if (target.dataset.passwordToggle) {
+    const input = document.getElementById(target.dataset.passwordToggle), visible = input.type === 'password';
+    input.type = visible ? 'text' : 'password'; target.setAttribute('aria-pressed',String(visible));
+    target.textContent = visible ? 'Hide' : 'Show'; target.setAttribute('aria-label',`${visible?'Hide':'Show'} ${input.id==='account-confirm'?'confirmation password':'password'}`); return;
+  }
   if (target.dataset.mode) { mode = target.dataset.mode; landing(); return; }
   if (target.dataset.card) {
     const id = target.dataset.card; selected.has(id) ? selected.delete(id) : selected.add(id);
@@ -767,22 +796,51 @@ async function sendChat(inputId) {
   for (const input of document.querySelectorAll('#chat-input, #dialog-chat-input')) input.value = chatDraft;
   syncControls(); document.getElementById(inputId)?.focus();
 }
+app.addEventListener('keydown', event => {
+  if (!event.target.matches('[data-auth-mode]') || authBusy) return;
+  if (!['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return;
+  event.preventDefault(); changeAuthMode(event.key === 'Home' ? 'register' : event.key === 'End' ? 'login' : authMode === 'register' ? 'login' : 'register');
+});
+app.addEventListener('invalid', event => {
+  if (event.target.closest('#auth-form') && event.target === event.target.form.querySelector(':invalid')) authError(event.target.validationMessage,event.target.id);
+}, true);
+app.addEventListener('input', event => {
+  if (!event.target.closest('#auth-form')) return;
+  event.target.removeAttribute('aria-invalid');
+  document.querySelector('#auth-error').textContent = '';
+  const match = document.querySelector('#account-password-match');
+  if (match) { const confirm = document.querySelector('#account-confirm').value; match.textContent = confirm ? confirm === document.querySelector('#account-password').value ? 'Passwords match.' : 'Passwords do not match yet.' : ''; }
+});
 app.addEventListener('submit', async event => {
   event.preventDefault();
   if (event.target.id === 'auth-form') {
     if (authBusy) return;
     const data = Object.fromEntries(new FormData(event.target));
-    if (authMode === 'register' && data.password !== data.confirmPassword) { toast('Your passwords do not match.', true); return; }
+    const validation = accountValidation(data, authMode === 'register');
+    if (validation) { authError(validation.message,validation.field); return; }
+    document.querySelector('#auth-error').textContent = '';
+    const submittedMode = authMode;
     delete data.confirmPassword;
-    tableEpoch++; authBusy = true; busy = true;
+    tableEpoch++; authBusy = true; busy = true; syncAuthControls();
     const button = event.target.querySelector('[type="submit"]'); button.disabled = true;
     const text = button.textContent; button.textContent = authMode === 'register' ? 'Creating your profile…' : 'Signing you in…';
     try {
       session = await request(authMode === 'register' ? '/api/register' : '/api/login', data);
+      authIdentity.name = ''; authIdentity.username = '';
+      for (const input of event.target.querySelectorAll('[name=password], [name=confirmPassword]')) { input.value = ''; input.type = 'password'; }
       setAccount(session.account); lastCode = ''; state = null; selected.clear(); groups = [];
       tables = []; tableUi.clear(); chatAttention.clear(); await restoreTables(); setConnection('connected');
-      toast(authMode === 'register' ? 'Welcome! 10,000 play points are saved to your profile.' : 'Welcome back. Your profile and points are restored.');
-    } catch (e) { toast(e.message, true); button.disabled = false; button.textContent = text; }
+      toast(submittedMode === 'register' ? 'Welcome! 10,000 play points are saved to your profile.' : 'Welcome back. Your profile and points are restored.');
+    } catch (e) {
+      if (document.querySelector('#auth-form') === event.target) {
+        authError(e.message);
+        for (const toggle of event.target.querySelectorAll('[data-password-toggle]')) {
+          const input = document.getElementById(toggle.dataset.passwordToggle); input.type = 'password'; toggle.textContent = 'Show'; toggle.setAttribute('aria-pressed','false'); toggle.setAttribute('aria-label',`Show ${input.id==='account-confirm'?'confirmation password':'password'}`);
+        }
+        button.textContent = text;
+      }
+      toast(e.message, true);
+    }
     finally { authBusy = false; busy = false; syncControls(); }
     return;
   }
@@ -803,6 +861,8 @@ app.addEventListener('submit', async event => {
 let tableEntryMode = 'create';
 function setTableEntryMode(mode) {
   tableEntryMode = mode;
+  document.querySelector('#table-entry-error').textContent = '';
+  document.querySelector('#new-table-code').removeAttribute('aria-invalid');
   document.querySelector('#new-table-code-row').hidden = mode !== 'join';
   document.querySelector('#new-table-code').required = mode === 'join';
   document.querySelector('#new-table-access-row').hidden = mode !== 'create';
@@ -837,9 +897,28 @@ document.addEventListener('click', event => {
   if (button.hasAttribute('data-add-table')) openTableEntry('create');
   if (button.dataset.tableMode) setTableEntryMode(button.dataset.tableMode);
 });
+function updateInvitePreview() {
+  const code = inviteCode(document.querySelector('#new-table-code').value,location.origin);
+  document.querySelector('#invite-preview').textContent = code ? `Invite ready: ${code}. Enter the room password if your friend set one.` : 'Ask the host for the invite code or link and the room password, if required.';
+}
+document.querySelector('#new-table-code').addEventListener('input', event => {
+  event.target.removeAttribute('aria-invalid'); document.querySelector('#table-entry-error').textContent = ''; updateInvitePreview();
+});
+document.querySelector('#tables-dialog').addEventListener('close', () => {
+  document.querySelector('#new-table-password').value = ''; document.querySelector('#new-table-access').value = '';
+});
 document.querySelector('#table-entry-form').addEventListener('submit', async event => {
   event.preventDefault(); if (busy || connection !== 'connected') return;
   const data = { ...Object.fromEntries(new FormData(event.target)), name: account?.name };
+  if (tableEntryMode === 'join') {
+    const code = inviteCode(data.code,location.origin);
+    if (!code) {
+      document.querySelector('#table-entry-error').textContent = 'Enter a 12-character invite code or a full invite link from this site.';
+      document.querySelector('#new-table-code').setAttribute('aria-invalid','true'); document.querySelector('#new-table-code').focus(); return;
+    }
+    data.code = code; document.querySelector('#new-table-code').value = code;
+  } else { delete data.code; }
+  if (tableEntryMode === 'join') delete data.accessKey;
   stashTableUi(); tableEpoch++; busy = true; syncControls();
   document.querySelector('#table-entry-error').textContent = '';
   try {
@@ -849,6 +928,7 @@ document.querySelector('#table-entry-form').addEventListener('submit', async eve
   } catch (e) {
     if (!e.status || e.status >= 500) setConnection('reconnecting');
     document.querySelector('#table-entry-error').textContent = e.message;
+    document.querySelector('#table-entry-error').focus();
     toast(e.message, true);
   } finally { busy = false; syncControls(); }
 });
@@ -897,6 +977,7 @@ document.querySelector('#profile-dialog').addEventListener('click', async event 
     try {
       session = await request('/api/logout', { logout: true });
       document.querySelector('#profile-dialog').close(); state = null; lastCode = ''; selected.clear(); groups = []; chatDraft = ''; tables = []; tableUi.clear(); chatAttention.clear();
+      authIdentity.name = ''; authIdentity.username = '';
       feedbackDraft = { category: 'idea', message: '', id: null }; accountPageEpoch++;
       history.replaceState({}, '', '/'); setAccount(null); authMode = 'login'; landing(); toast('Signed out. Your points are saved.');
     } catch (e) { toast(e.message, true); target.disabled = false; }
