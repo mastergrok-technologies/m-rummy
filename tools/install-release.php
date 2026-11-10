@@ -60,7 +60,7 @@ function install_release(string $root, string $stage, string $origin, string $sh
     deploy_require(is_array($parsed) && ($parsed['scheme'] ?? '') === 'https' && !empty($parsed['host']) && !isset($parsed['user']) && !isset($parsed['pass']) && !isset($parsed['query']) && !isset($parsed['fragment']) && empty($parsed['path']), 'Use the exact public HTTPS origin without a path.');
     $manifest = json_decode(file_get_contents($stage . '/manifest.json'), true, 512, JSON_THROW_ON_ERROR);
     deploy_require(($manifest['version'] ?? null) === 1 && ($manifest['commit'] ?? '') === $sha && is_array($manifest['files'] ?? null), 'Release manifest does not match the tested commit.');
-    foreach (['public/index.html', 'public/api.php', 'public/.htaccess', 'public/app.js', 'public/board-state.js', 'public/tutorial.js', 'server/bootstrap.php', 'server/accounts.php', 'server/presence.php', 'server/game.php', 'server/rules.php'] as $required) deploy_require(isset($manifest['files'][$required]), 'Release is missing required application files.');
+    foreach (['public/index.html', 'public/api.php', 'public/.htaccess', 'public/app.js', 'public/board-state.js', 'public/tutorial.js', 'server/bootstrap.php', 'server/accounts.php', 'server/feedback.php', 'server/presence.php', 'server/game.php', 'server/rules.php'] as $required) deploy_require(isset($manifest['files'][$required]), 'Release is missing required application files.');
     $mapping = [];
     foreach ($manifest['files'] as $source => $hash) {
         deploy_require((bool)preg_match('#^(public|server)/[A-Za-z0-9_./-]+$#D', $source) && !str_contains($source, '..') && !in_array($source, ['server/config.php', 'public/router.php'], true), 'Release contains a protected or invalid file.');

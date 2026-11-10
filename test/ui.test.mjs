@@ -1173,3 +1173,80 @@ test('rejected avatar saves keep the selection and allow a deliberate retry', as
   await page.waitForFunction(() => document.querySelector('#avatar-status').textContent.includes('saved to your account'));
   assert.equal(profile.avatar, 4);
 });
+
+async function settingsFixture(t, viewport) {
+  const f = await accountFixture(t, viewport);
+  const receipts = new Map(), submissions = [];
+  let uncertain = false;
+  await f.page.route('http://rummy.test/api/username', async route => {
+    const input = route.request().postDataJSON();
+    if (input.currentPassword !== 'test-password-long') return route.fulfill({status:400,json:{error:'Incorrect username or password.'}});
+    f.profile.username = input.username.toLowerCase(); f.room.account = {...f.profile};
+    return route.fulfill({json:f.profile});
+  });
+  await f.page.route('http://rummy.test/api/feedback*', async route => {
+    if (route.request().method() === 'GET') {
+      const receipt = receipts.get(new URL(route.request().url()).searchParams.get('id'));
+      return receipt ? route.fulfill({json:receipt}) : route.fulfill({status:404,json:{error:'Submission not found.'}});
+    }
+    const input = route.request().postDataJSON(); submissions.push(input);
+    if (!receipts.has(input.id)) receipts.set(input.id, {...input,time:Date.now(),status:'received'});
+    if (uncertain) { uncertain = false; return route.abort(); }
+    return route.fulfill({json:receipts.get(input.id)});
+  });
+  return {...f,receipts,submissions,uncertainSave:()=>{uncertain=true;}};
+}
+
+for (const viewport of [{width:360,height:800},{width:768,height:1024},{width:1920,height:1080}]) {
+  test(`next account pages support username, suggestions and confirmation at ${viewport.width}px`, async t => {
+    const {page,receipts,profile,errors}=await settingsFixture(t,viewport);
+    await page.locator('#profile-button').click(); await page.locator('.profile-identity').waitFor();
+    await page.locator('[data-account-view="username"]').click();
+    await page.getByRole('heading',{name:'Change Username',exact:true}).waitFor();
+    await page.locator('#new-username').fill('updated_name');
+    await page.locator('#rename-password').fill('wrong-password');
+    await page.getByRole('button',{name:'Save username',exact:true}).click();
+    await page.waitForFunction(()=>document.querySelector('#account-page-status').textContent.includes('Incorrect'));
+    assert.equal(await page.locator('#new-username').inputValue(),'updated_name');
+    assert.equal(await page.locator('#rename-password').inputValue(),'');
+    await page.locator('#rename-password').fill('test-password-long');
+    await page.getByRole('button',{name:'Save username',exact:true}).click();
+    await page.waitForFunction(()=>document.querySelector('#account-page-status').textContent.includes('Username saved'));
+    assert.equal(profile.username,'updated_name');
+    assert.equal(await page.locator('#account-pages-dialog').evaluate(el=>el.scrollWidth<=el.clientWidth+1),true);
+    await waitingScreenshot(page,`username-${viewport.width}`);
+    await page.locator('#account-pages-dialog [data-account-back]').click();
+    await page.locator('.profile-handle').filter({hasText:'@updated_name'}).waitFor();
+    await page.locator('[data-account-view="feedback"]').click();
+    await page.getByRole('heading',{name:'Suggestion Box',exact:true}).waitFor();
+    await page.locator('#feedback-category').selectOption('issue');
+    await page.locator('#feedback-message').fill('<script>alert(1)</script> Improve the table layout.');
+    await waitingScreenshot(page,`suggestion-form-${viewport.width}`);
+    await page.getByRole('button',{name:'Submit suggestion',exact:true}).click();
+    await page.getByRole('heading',{name:'Submission Confirmation',exact:true}).waitFor();
+    assert.equal(receipts.size,1);
+    assert.match(await page.locator('.feedback-receipt blockquote').innerText(),/<script>alert\(1\)<\/script>/);
+    assert.equal(await page.locator('.feedback-receipt script').count(),0);
+    assert.equal(await page.locator('#account-pages-dialog').evaluate(el=>el.scrollWidth<=el.clientWidth+1),true);
+    await waitingScreenshot(page,`suggestion-confirmation-${viewport.width}`);
+    await page.locator('[data-feedback-new]').click();
+    assert.equal(await page.locator('#feedback-message').inputValue(),'');
+    await page.locator('[data-feedback-last]').click();
+    await page.getByRole('heading',{name:'Submission Confirmation',exact:true}).waitFor();
+    assert.equal(receipts.size,1); assert.deepEqual(errors,[]);
+  });
+}
+
+test('uncertain suggestion save retains the draft and recovers the same receipt on explicit retry',async t=>{
+  const {page,receipts,submissions,uncertainSave}=await settingsFixture(t);
+  await page.locator('#profile-button').click(); await page.locator('.profile-identity').waitFor();
+  await page.locator('[data-account-view="feedback"]').click();
+  await page.locator('#feedback-message').fill('A better table layout.');
+  uncertainSave(); await page.getByRole('button',{name:'Submit suggestion',exact:true}).click();
+  await page.waitForFunction(()=>document.querySelector('#account-page-status').textContent.includes('Could not confirm'));
+  assert.equal(await page.locator('#feedback-message').inputValue(),'A better table layout.');
+  await page.waitForFunction(()=>!document.querySelector('#feedback-form button[type="submit"]').disabled);
+  await page.getByRole('button',{name:'Submit suggestion',exact:true}).click();
+  await page.getByRole('heading',{name:'Submission Confirmation',exact:true}).waitFor();
+  assert.equal(receipts.size,1); assert.equal(submissions.length,2); assert.equal(submissions[0].id,submissions[1].id);
+});

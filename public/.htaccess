@@ -4,7 +4,7 @@ AddType application/manifest+json .webmanifest
 
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    RewriteRule ^api/(session|room|tables|create|join|action|register|login|logout|profile)$ api.php?route=$1 [QSA,L]
+    RewriteRule ^api/(session|room|tables|create|join|action|register|login|logout|profile|username|feedback)$ api.php?route=$1 [QSA,L]
     RewriteRule ^(?:server|data|test|tools|src|deploy|docs)(?:/|$) - [F,L]
 </IfModule>
 
