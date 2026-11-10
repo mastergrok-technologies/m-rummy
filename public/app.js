@@ -1,3 +1,4 @@
+import { avatarSource } from './ui/avatars.js';
 import { homeMarkup, homeTablesMarkup } from './ui/home.js';
 import { lastDealPanelMarkup } from './ui/panels/last-deal.js';
 import { bestDeclarationPanelMarkup, declarationPanelMarkup } from './ui/panels/declaration.js';
@@ -38,6 +39,7 @@ applyPreferences();
 const groupKey = room => `mr-groups-${room.code}-${room.round}`;
 const commandSelector = '[data-draw], [data-remove], [data-action="start"], [data-action="addBot"], [data-action="drop"], [data-action="discard"], [data-action="declare"], [data-action="arrange"], [data-action="leave"], #chat-form button';
 let authMode = 'register', account = null, profileOffset = 0, authBusy = false;
+let profileFilter = 'all', profileBusy = false, profileEpoch = 0, profileData = null;
 const number = value => Number(value || 0).toLocaleString('en-IN');
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const label = c => `${ranks[c.rank] || c.rank} ${c.suit === 'J' ? 'printed joker' : ({ S: 'spades', H: 'hearts', D: 'diamonds', C: 'clubs' })[c.suit]}`;
@@ -148,18 +150,44 @@ function setAccount(next) {
   const button = document.querySelector('#profile-button');
   button.hidden = !account && !state;
   if (!account) button.textContent = 'Create your profile';
-  if (account) button.innerHTML = `<span class="profile-initial">${esc(account.name.slice(0, 1).toUpperCase())}</span><span><small>Your profile</small><strong>${number(account.points)} pts</strong></span>`;
+  if (account) button.innerHTML = `<span class="profile-initial">${avatarSource(account.avatar) ? `<img src="${avatarSource(account.avatar)}" alt="" width="32" height="32">` : esc(account.name.slice(0, 1).toUpperCase())}</span><span><small>Your profile</small><strong>${number(account.points)} pts</strong></span>`;
 }
 function renderAuth() {
   document.querySelector('.entry-card').innerHTML = accountFormMarkup(authMode === 'register');
 }
-async function loadProfile(offset = 0) {
+function syncProfileControls() {
+  const root = document.querySelector('#profile-content');
+  root.setAttribute('aria-busy', String(profileBusy));
+  for (const control of root.querySelectorAll('button,input')) {
+    control.dataset.profileLegal ??= control.disabled ? 'no' : 'yes';
+    control.disabled = profileBusy || busy || control.dataset.profileLegal === 'no' || (control.matches('#avatar-form button[type="submit"]') && connection !== 'connected');
+  }
+}
+async function loadProfile(offset = 0, filter = profileFilter) {
+  if (!account || profileBusy || busy) return;
+  const epoch = ++profileEpoch;
+  const dialog = document.querySelector('#profile-dialog'), root = document.querySelector('#profile-content');
+  const focus = document.activeElement;
+  const focusFilter = focus?.dataset.historyFilter, focusPage = focus?.dataset.profilePage;
+  if (!dialog.open) {
+    root.innerHTML = '<p role="status">Loading your account…</p>';
+    dialog.showModal();
+  }
+  profileBusy = true; syncProfileControls();
   try {
-    const profile = await request(`/api/profile?offset=${offset}`); profileOffset = offset; setAccount(profile);
-    const dialog = document.querySelector('#profile-dialog');
-    document.querySelector('#profile-content').innerHTML = profileMarkup(profile, offset, esc, number);
-    if (!dialog.open) dialog.showModal();
-  } catch (e) { toast(e.message, true); }
+    const profile = await request(`/api/profile?offset=${offset}&filter=${encodeURIComponent(filter)}`);
+    if (epoch !== profileEpoch || !dialog.open || !account) return;
+    profileData = profile; profileOffset = offset; profileFilter = filter; setAccount(profile);
+    root.innerHTML = profileMarkup(profile, offset, esc, number, filter);
+    if (focusFilter) root.querySelector(`[data-history-filter="${CSS.escape(focusFilter)}"]`)?.focus();
+    else if (focusPage) root.querySelector(`[data-profile-page="${CSS.escape(focusPage)}"]`)?.focus();
+  } catch (e) {
+    if (epoch !== profileEpoch || !dialog.open) return;
+    if (!profileData) root.innerHTML = `<p role="alert">${esc(e.message)}</p><button type="button" class="button secondary" data-profile-retry>Try again</button>`;
+    toast(e.message, true);
+  } finally {
+    if (epoch === profileEpoch) { profileBusy = false; syncProfileControls(); }
+  }
 }
 function confirm(title, text, action) {
   document.querySelector('#confirm-title').textContent = title;
@@ -208,7 +236,7 @@ function roomChrome() {
 // Use each player's stable seat index across waiting and active boards.
 function seatAvatar(player) {
   const i = state.players.findIndex(p => p.id === player.id);
-  return player.bot ? '<span aria-hidden="true">✦</span>' : `<img src="/assets/figma/avatar-${i + 1}.${[1, 2, 3].includes(i) ? 'svg' : 'png'}" alt="" width="96" height="96">`;
+  return player.bot ? '<span aria-hidden="true">✦</span>' : `<img data-avatar-player="${esc(player.id)}" src="${avatarSource(player.avatar) || `/assets/figma/avatar-${i + 1}.${[1, 2, 3].includes(i) ? 'svg' : 'png'}`}" alt="" width="96" height="96">`;
 }
 function renderWaitingRoom() {
   const focused = document.activeElement;
@@ -392,6 +420,12 @@ function renderGamePanel() {
 }
 function updatePresence() {
   if (!state) return;
+  for (const image of document.querySelectorAll('[data-avatar-player]')) {
+    const i = state.players.findIndex(p => p.id === image.dataset.avatarPlayer);
+    if (i < 0) continue;
+    const source = avatarSource(state.players[i].avatar) || `/assets/figma/avatar-${i + 1}.${[1, 2, 3].includes(i) ? 'svg' : 'png'}`;
+    if (image.getAttribute('src') !== source) image.src = source;
+  }
   for (const badge of document.querySelectorAll('[data-presence-player]')) {
     const player = state.players.find(p => p.id === badge.dataset.presencePlayer);
     if (!player) continue;
@@ -406,7 +440,7 @@ function updatePresence() {
   }
 }
 function syncControls(fresh = false) {
-  updateConnectionNotice();
+  updateConnectionNotice(); syncProfileControls();
   for (const button of document.querySelectorAll('[data-switch-table], [data-add-table], [data-home-entry], #table-entry-form button[type="submit"]')) button.disabled = busy || connection !== 'connected' || ((button.hasAttribute('data-add-table') || button.hasAttribute('data-home-entry')) && tables.length >= tableLimit);
   for (const button of document.querySelectorAll('[data-home], [data-home-tab]')) button.disabled = busy;
   if (!state) {
@@ -683,6 +717,9 @@ document.querySelector('#mobile-button').addEventListener('click', () => documen
 document.querySelector('#profile-button').addEventListener('click', () => { if (account) loadProfile(); else landing(); });
 document.querySelector('#profile-dialog').addEventListener('click', async event => {
   const target = event.target.closest('button'); if (!target || target.disabled) return;
+  if (profileBusy) return;
+  if (target.hasAttribute('data-profile-retry')) return loadProfile(profileOffset, profileFilter);
+  if (target.dataset.historyFilter) return loadProfile(0, target.dataset.historyFilter);
   if (target.dataset.history !== undefined) return loadProfile(Number(target.dataset.history));
   if (target.id === 'sign-out') {
     if (busy || authBusy) return;
@@ -695,10 +732,44 @@ document.querySelector('#profile-dialog').addEventListener('click', async event 
     finally { busy = false; }
   }
 });
+document.querySelector('#profile-dialog').addEventListener('close', () => {
+  profileEpoch++; profileBusy = false; profileData = null;
+});
+document.querySelector('#profile-dialog').addEventListener('submit', async event => {
+  if (event.target.id !== 'avatar-form') return;
+  event.preventDefault(); if (profileBusy || busy || !account || connection !== 'connected') return;
+  const avatar = Number(new FormData(event.target).get('avatar'));
+  if (!avatarSource(avatar)) return;
+  const epoch = profileEpoch, accountId = account.id;
+  tableEpoch++; busy = true; profileBusy = true; syncControls(); syncProfileControls();
+  const status = document.querySelector('#avatar-status'); status.textContent = 'Saving your avatar…';
+  try {
+    const result = await request('/api/profile', { avatar });
+    if (!account || account.id !== accountId) return;
+    setAccount(result);
+    if (state) {
+      const me = state.players.find(p => p.id === state.me); if (me) me.avatar = result.avatar;
+      updatePresence();
+    }
+    if (epoch === profileEpoch && document.querySelector('#profile-dialog').open) {
+      if (profileData) profileData.avatar = result.avatar;
+      document.querySelector('.profile-portrait').src = avatarSource(result.avatar);
+      status.textContent = 'Avatar saved to your account.';
+    }
+  } catch (e) {
+    if (!e.status || e.status >= 500) setConnection('reconnecting');
+    if (epoch === profileEpoch) status.textContent = `Could not confirm the save. ${e.message}`;
+    toast(e.message, true);
+  } finally {
+    busy = false;
+    if (epoch === profileEpoch) { profileBusy = false; syncProfileControls(); }
+    syncControls();
+  }
+});
 document.querySelectorAll('dialog').forEach(dialog => {
   dialog.addEventListener('keydown', event => {
     if (event.key !== 'Tab') return;
-    const controls = [...dialog.querySelectorAll('button, input, select, textarea, a[href], [tabindex="0"]')].filter(el => !el.disabled && el.getClientRects().length);
+    const controls = [...dialog.querySelectorAll('button, input, select, textarea, summary, a[href], [tabindex="0"]')].filter(el => !el.disabled && el.getClientRects().length);
     if (!controls.length) { event.preventDefault(); return; }
     const first = controls[0], last = controls.at(-1);
     if (event.shiftKey && (document.activeElement === first || !controls.includes(document.activeElement))) { event.preventDefault(); last.focus(); }

@@ -62,4 +62,27 @@ test('Commands, card identity and version checks remain scoped to their table', 
     try { rummy_handle($s, tables_config(), 'action', 'POST', ['code' => $a, 'version' => $version, 'action' => 'draw', 'source' => 'stock']); throw new Exception('Expected conflict'); }
     catch (RummyApiError $e) { same($e->status, 409); same($e->state['code'], $a); }
 });
+test('Profile updates are authenticated and verified without changing game state', function() {
+    $s = tables_store(); $code = tables_add($s, 'a');
+    rummy_join($s['rooms'][$code], 'b', 'Player b', ''); rummy_start($s['rooms'][$code], 'a', array_keys($s['users']));
+    $roomBefore = $s['rooms'][$code]; $eventsBefore = $s['pointEvents']; $pointsBefore = $s['users']['a']['points'];
+    $_SERVER['HTTP_HOST'] = 'localhost'; $_SERVER['HTTP_ORIGIN'] = 'http://localhost'; $_GET = [];
+    $profile = rummy_handle($s, tables_config(), 'profile', 'POST', ['avatar' => 3]); same($profile['avatar'], 3);
+    same($s['rooms'][$code], $roomBefore); same($s['pointEvents'], $eventsBefore); same($s['users']['a']['points'], $pointsBefore);
+    $view = rummy_room_view($s, $s['rooms'][$code], 'b');
+    same($view['players'][0]['avatar'], 3); same($view['version'], $roomBefore['version']);
+    check(!isset($view['players'][0]['passwordHash'])); check(!isset($view['players'][0]['hand']));
+    $_SERVER['HTTP_X_CSRF_TOKEN'] = 'bad';
+    rejects(function() use (&$s) { rummy_handle($s, tables_config(), 'profile', 'POST', ['avatar' => 4]); }, 'verification');
+    $_SERVER['HTTP_X_CSRF_TOKEN'] = 'test-csrf'; $_SERVER['HTTP_ORIGIN'] = 'https://evil.example';
+    rejects(function() use (&$s) { rummy_handle($s, tables_config(), 'profile', 'POST', ['avatar' => 4]); }, 'verification');
+    $_SERVER['HTTP_ORIGIN'] = 'http://localhost';
+    rejects(function() use (&$s) { rummy_handle($s, tables_config(), 'profile', 'POST', ['avatar' => 4, 'points' => 1000000]); }, 'Only avatar');
+    same($s['users']['a']['avatar'], 3);
+    $_GET = ['filter' => ['win']];
+    rejects(function() use (&$s) { rummy_handle($s, tables_config(), 'profile', 'GET', []); }, 'filter');
+    $_GET = []; unset($s['sessions']['test-token']['accountId']);
+    rejects(function() use (&$s) { rummy_handle($s, tables_config(), 'profile', 'POST', ['avatar' => 4]); }, 'Sign in');
+    unset($_SERVER['HTTP_ORIGIN']);
+});
 echo "\n$passed multi-table tests passed.\n";

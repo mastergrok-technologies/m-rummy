@@ -56,7 +56,11 @@ function rummy_rotate_session(array &$store, string $oldToken, string $id, bool 
 function rummy_room_view(array $store, array $room, string $id): array {
     $view = rummy_public($room, $id);
     $presence = rummy_player_presence($store, $view['players'], rummy_now());
-    foreach ($view['players'] as &$player) $player['presence'] = $presence[$player['id']];
+    foreach ($view['players'] as &$player) {
+        $player['presence'] = $presence[$player['id']];
+        $avatar = $store['users'][$player['id']]['avatar'] ?? null;
+        $player['avatar'] = is_int($avatar) && $avatar >= 1 && $avatar <= 5 ? $avatar : null;
+    }
     unset($player);
     return array_merge($view, ['account' => rummy_profile($store, $id)]);
 }
@@ -106,11 +110,18 @@ function rummy_handle(array &$store, array $config, string $route, string $metho
         $accountId = rummy_verify_login($store, $input['username'] ?? null, $input['password'] ?? null);
         return rummy_rotate_session($store, $token, $accountId, true, $config);
     }
-    if ($route === 'profile' && $method === 'GET') {
+    if ($route === 'profile') {
         if (empty($session['accountId'])) throw new RummyApiError('Sign in to view your profile.', 401);
+        if ($method === 'POST') {
+            rummy_require(count($input) === 1 && array_key_exists('avatar', $input), 'Only avatar changes are supported.');
+            rummy_set_avatar($store, $id, $input['avatar']);
+            return rummy_profile($store, $id);
+        }
         $offset = filter_var($_GET['offset'] ?? 0, FILTER_VALIDATE_INT);
         rummy_require($offset !== false && $offset >= 0 && $offset <= 1000000, 'Invalid history page.');
-        return rummy_profile($store, $id, $offset);
+        $filter = $_GET['filter'] ?? 'all';
+        rummy_require(is_string($filter), 'Choose a valid history filter.');
+        return rummy_profile($store, $id, $offset, $filter);
     }
     if ($route === 'tables' && $method === 'GET') {
         $selected = $_GET['code'] ?? '';

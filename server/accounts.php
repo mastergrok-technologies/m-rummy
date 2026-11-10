@@ -62,10 +62,21 @@ function rummy_verify_login(array &$store, mixed $username, mixed $password): st
     if (password_needs_rehash($hash, PASSWORD_DEFAULT)) $store['users'][$id]['passwordHash'] = password_hash(hash('sha256', $password), PASSWORD_DEFAULT);
     return $id;
 }
-function rummy_profile(array $store, string $id, int $offset = 0): ?array {
+/** Avatar IDs map only to artwork bundled with the application. */
+function rummy_set_avatar(array &$store, string $id, mixed $avatar): void {
+    rummy_require(isset($store['users'][$id]), 'Sign in to change your avatar.');
+    rummy_require(is_int($avatar) && $avatar >= 1 && $avatar <= 5, 'Choose one of the available avatars.');
+    $store['users'][$id]['avatar'] = $avatar;
+}
+function rummy_profile(array $store, string $id, int $offset = 0, string $filter = 'all'): ?array {
     if (!isset($store['users'][$id])) return null;
+    rummy_require(in_array($filter, ['all', 'win', 'loss', 'signup'], true), 'Choose a valid history filter.');
     $p = $store['users'][$id]; unset($p['passwordHash']);
+    $p['avatar'] = isset($p['avatar']) && is_int($p['avatar']) && $p['avatar'] >= 1 && $p['avatar'] <= 5 ? $p['avatar'] : null;
     $events = array_reverse(array_values(array_filter($store['pointEvents'], fn($event) => $event['userId'] === $id)));
+    $p['historyAllTotal'] = count($events);
+    if ($filter !== 'all') $events = array_values(array_filter($events, fn($event) => $event['type'] === $filter));
+    $p['historyFilter'] = $filter;
     $p['history'] = array_map(function($event) { unset($event['userId']); return $event; }, array_slice($events, $offset, 20));
     $p['historyTotal'] = count($events); $p['historyOffset'] = $offset;
     return $p;
@@ -87,8 +98,12 @@ function rummy_settle(array &$store, array &$room): void {
         $eventId = 'round:' . $room['roundId'] . ':' . $id;
         if (isset($store['pointEvents'][$eventId])) continue;
         $won = $id === $winner;
+        $ownScore = null;
+        foreach ($room['result']['scores'] as $score) if ($score['id'] === $id) { $ownScore = $score; break; }
         rummy_credit($store, $id, $eventId, $won ? $reward : 0, $won ? 'win' : 'loss', [
             'room' => $room['code'], 'round' => $room['round'], 'opponents' => count($eligible) - 1,
+            'match' => ['winner' => $room['result']['winnerName'], 'reason' => $room['result']['reason'],
+                'penalty' => $ownScore['penalty'] ?? null, 'totalPenalty' => $ownScore['total'] ?? null],
         ]);
         $store['users'][$id]['roundsPlayed']++;
         if ($won) $store['users'][$id]['wins']++;

@@ -71,4 +71,30 @@ test('Guest-only v1 migration preserves games and sessions, is repeatable, and a
     same($m['users']['p0']['points'], 10000); same(count($m['pointEvents']), 1);
     try { rummy_migrate(['schemaVersion' => 999] + $s); throw new RuntimeException('Expected future-schema rejection.'); } catch (LogicException $e) { check(str_contains($e->getMessage(), 'newer')); }
 });
+test('Avatars persist on accounts, validate IDs and never change balances or credentials', function() {
+    $s = account_store(2); $before = $s; same(rummy_profile($s, 'p0')['avatar'], null);
+    rummy_set_avatar($s, 'p0', 3); same(rummy_profile($s, 'p0')['avatar'], 3);
+    same(rummy_profile($s, 'p1')['avatar'], null);
+    $expected = $before; $expected['users']['p0']['avatar'] = 3; same($s, $expected);
+    foreach ([null, '3', 0, 6, 1.5, '../photo'] as $bad) rejects(function() use (&$s, $bad) { rummy_set_avatar($s, 'p0', $bad); }, 'available');
+    same($s, $expected);
+});
+test('History filters preserve account isolation, totals and pagination', function() {
+    $s = account_store(2);
+    for ($i = 0; $i < 25; $i++) rummy_credit($s, 'p0', "filtered:$i", 100, 'win');
+    rummy_credit($s, 'p0', 'filtered-loss', 0, 'loss');
+    $p = rummy_profile($s, 'p0', 20, 'win'); same($p['historyFilter'], 'win'); same($p['historyTotal'], 25); same(count($p['history']), 5); same($p['historyAllTotal'], 27);
+    same(rummy_profile($s, 'p1', 0, 'win')['historyTotal'], 0);
+    same(rummy_profile($s, 'p0', 0, 'loss')['historyTotal'], 1);
+    rejects(fn() => rummy_profile($s, 'p0', 0, 'invalid'), 'filter');
+});
+test('Finished rounds retain only own penalty facts in the account ledger', function() {
+    $s = account_store(2); $r = rummy_create('p0', 'Player'); rummy_join($r, 'p1', 'Friend', '');
+    rummy_start($r, 'p0', array_keys($s['users'])); rummy_drop($r, 'p1'); rummy_settle($s, $r);
+    $event = rummy_profile($s, 'p1', 0, 'loss')['history'][0];
+    same($event['match']['winner'], 'Player'); same($event['match']['penalty'], 20); same($event['match']['reason'], 'last-player');
+    check(!str_contains(json_encode($event), 'hand')); check(!isset($event['userId']));
+    $before = $s['pointEvents']; rummy_settle($s, $r); same($s['pointEvents'], $before);
+    unset($s['rooms'][$r['code']]); same(rummy_profile($s, 'p1', 0, 'loss')['history'][0], $event);
+});
 echo "\n$passed account, rewards, and migration tests passed.\n";
