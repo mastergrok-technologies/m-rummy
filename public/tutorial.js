@@ -7,3 +7,12 @@ export const tutorialSteps = [
   { title: 'Understand penalty scoring', text: 'Aces and face cards count 10; numbered cards count their value; jokers count 0. The king, queen and five below total 25 before any wild-rank exemption. A round loss is capped at 80.', cards: [{ rank: 13, suit: 'C' }, { rank: 12, suit: 'D' }, { rank: 5, suit: 'S' }], note: 'Without a pure sequence, all non-jokers count. With only one sequence, only pure sequences are exempt. With two sequences including a pure one, all valid groups can be exempt.' },
   { title: 'Ready to declare', text: 'After drawing, select one final discard. Your other 13 cards must form valid groups, including at least two sequences with one pure sequence. The server validates the full hand.', cards: [], note: 'You cannot immediately return a card picked from the open deck. Invalid declarations leave your hand and turn open with no penalty. Human turns last 60 seconds. First drop costs 20; later drops cost 40.' },
 ];
+
+export const tutorialQuestions = [
+  {prompt:'How many cards do you keep after a normal turn?',choices:['14 cards','13 cards'],correct:1,explanation:'Draw to 14, then discard one to return to 13.'},
+  {prompt:'Which group is a pure sequence?',choices:['3♥, 4♥, 5♥','3♥, Joker, 5♥'],correct:0,explanation:'A pure sequence uses consecutive cards of one suit without a substitute joker.'},
+  {prompt:'Can you pick a joker from the open deck?',choices:['No','Yes'],correct:0,explanation:'Open-deck jokers cannot be picked in this game.'},
+  {prompt:'Is 9♥, 9♥, 9♣ a valid set?',choices:['No','Yes'],correct:0,explanation:'A set cannot repeat a suit, even when the cards come from different packs.'},
+  {prompt:'What is the maximum round loss penalty?',choices:['100 points','80 points'],correct:1,explanation:'The round loss penalty is capped at 80. Profile play points are separate.'},
+  {prompt:'Can you immediately discard the card just picked from the open deck?',choices:['No','Yes'],correct:0,explanation:'Choose a different final discard. The server checks the remaining 13 cards.'},
+];

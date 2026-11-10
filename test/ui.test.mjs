@@ -1410,3 +1410,97 @@ for(const viewport of [{width:390,height:844},{width:768,height:1024},{width:192
     assert.deepEqual(requests.map(r=>r.action),['start']);assert.deepEqual(errors,[]);
   });
 }
+
+for(const viewport of [{width:390,height:844},{width:768,height:1024},{width:1920,height:1080}]){
+  test(`Learn Rummy topics and practice preserve the live hand at ${viewport.width}px`,async t=>{
+    const {page,requests,errors}=await fixture(t,viewport);
+    await page.locator('[data-card="card-0"]').click();
+    await open(page,'Learn rummy');
+    await page.locator('[data-tutorial-topic="3"]').click();
+    assert.equal(await page.locator('#tutorial-progress').textContent(),'Step 4 of 6');
+    assert.match(await page.locator('#tutorial-live-note').textContent(),/timers keep running/);
+    await page.locator('[data-tutorial-answer="1"]').click();
+    assert.match(await page.locator('#tutorial-practice-feedback').textContent(),/Try another answer/);
+    await page.locator('[data-tutorial-answer="0"]').click();
+    assert.match(await page.locator('#tutorial-practice-feedback').textContent(),/Correct/);
+    await page.locator('[data-tutorial-topic="1"]').click();
+    await page.locator('[data-tutorial-topic="3"]').click();
+    assert.equal(await page.locator('[data-tutorial-answer="0"]').getAttribute('aria-pressed'),'true');
+    assert.equal(await page.locator('#tutorial-dialog').evaluate(el=>el.scrollWidth<=el.clientWidth),true);
+    await waitingScreenshot(page,`learn-topics-${viewport.width}`);
+    await page.getByRole('button',{name:'Close tutorial',exact:true}).click();
+    assert.equal(await page.locator('[data-card="card-0"]').getAttribute('aria-pressed'),'true');
+    assert.equal(requests.length,0);assert.deepEqual(errors,[]);
+  });
+
+  test(`Last Deal browses settled rounds without jumping on new results at ${viewport.width}px`,async t=>{
+    const deal=round=>({round,winner:`Winner ${round}`,scores:[{name:'Same',penalty:0,total:round*10},{name:'Same',penalty:40,total:round*20}]});
+    const {page,room,requests,errors}=await fixture(t,viewport,false,{history:[deal(3),deal(2),deal(1)]});
+    await open(page,'Settings');await page.locator('[data-settings-panel="lastDeal"]').click();
+    assert.equal(await page.locator('#last-deal-round').inputValue(),'3');
+    assert.equal(await page.locator('#last-deal-newer').isDisabled(),true);
+    await page.locator('#last-deal-older').click();
+    assert.equal(await page.locator('#last-deal-round').inputValue(),'2');
+    room.history.unshift(deal(4));room.version++;
+    await page.getByText('2 newer completed rounds are available.',{exact:false}).waitFor();
+    assert.equal(await page.locator('#last-deal-round').inputValue(),'2');
+    assert.equal(await page.evaluate(()=>document.activeElement.id),'last-deal-round');
+    assert.match(await page.locator('.last-deal-summary').textContent(),/Winner 2/);
+    assert.equal(await page.locator('#game-dialog .card').count(),0);
+    await page.locator('#last-deal-round').selectOption('1');
+    assert.equal(await page.locator('#last-deal-older').isDisabled(),true);
+    await page.locator('#last-deal-latest').click();
+    assert.equal(await page.locator('#last-deal-round').inputValue(),'4');
+    assert.equal(await page.locator('#game-dialog').evaluate(el=>el.scrollWidth<=el.clientWidth),true);
+    await waitingScreenshot(page,`last-deal-browser-${viewport.width}`);
+    await page.locator('#last-deal-return').click();
+    assert.equal(await page.locator('#game-dialog').evaluate(el=>el.open),false);
+    assert.equal(requests.length,0);assert.deepEqual(errors,[]);
+  });
+}
+
+test('declaration recovery updates turn context and returns focus to the real hand',async t=>{
+  const f=await fixture(t,{width:390,height:844});const {page,room,requests,errors}=f;
+  await page.locator('[data-draw="stock"]').click();await page.locator('[data-card="drawn"]').click();
+  await page.locator('[data-action="declare"]').click();await page.locator('#confirm-yes').click();
+  await page.locator('#declaration-turn-status').waitFor();
+  assert.match(await page.locator('#declaration-turn-status').textContent(),/Selected:/);
+  assert.equal(await page.locator('[data-declaration-clock]').isVisible(),true);
+  f.setOffline(true);await page.evaluate(()=>window.dispatchEvent(new Event('offline')));
+  assert.match(await page.locator('#declaration-turn-status').textContent(),/fresh snapshot/);
+  assert.equal(await page.locator('#declaration-arrange').isDisabled(),true);
+  f.setOffline(false);await page.evaluate(()=>window.dispatchEvent(new Event('online')));
+  await page.waitForFunction(()=>!document.querySelector('#declaration-arrange').disabled);
+  await page.locator('#declaration-guide').click();
+  await page.getByRole('dialog',{name:'Best Possible Declaration',exact:true}).waitFor();
+  room.turn='other';room.phase='draw';room.hand=room.hand.filter(c=>c.id!=='drawn');room.version++;
+  await page.waitForFunction(()=>document.querySelector('#declaration-turn-status').textContent.includes('another player'));
+  assert.equal(await page.locator('[data-declaration-clock]').count(),0);
+  await page.locator('#declaration-guide-back').click();
+  room.status='finished';room.version++;
+  await page.waitForFunction(()=>document.querySelector('#declaration-turn-status').textContent.includes('not active'));
+  assert.equal(await page.locator('#declaration-arrange').isDisabled(),true);
+  assert.doesNotMatch(await page.locator('#game-dialog').innerText(),/Your turn is still active/);
+  await waitingScreenshot(page,'declaration-live-context-mobile');
+  await page.locator('#declaration-review').click();
+  assert.equal(await page.evaluate(()=>document.activeElement.id),'player-hand-title');
+  assert.equal(await page.locator('.hand-scroll [data-card]').count(),13);
+  assert.deepEqual(requests.map(r=>r.action),['draw','declare']);assert.deepEqual(errors,[]);
+});
+
+test('Last Deal resets to the selected table history and falls back when a round expires',async t=>{
+  const deal=(round,winner)=>({round,winner,scores:[{name:winner,penalty:0,total:10}]});
+  const {page,room,rooms,requests,errors}=await fixture(t,undefined,true,{history:[deal(2,'First table'),deal(1,'Old winner')]});
+  rooms.get('BBBBBB123456').history=[deal(7,'Second table')];
+  await open(page,'Settings');await page.locator('[data-settings-panel="lastDeal"]').click();
+  await page.locator('#last-deal-round').selectOption('1');
+  room.history=[deal(3,'Newest'),deal(2,'First table')];room.version++;
+  await page.waitForFunction(()=>document.querySelector('#last-deal-round').value==='3');
+  await close(page);await page.locator('[data-switch-table="BBBBBB123456"]').click();
+  await page.waitForURL('**/?room=BBBBBB123456');
+  await open(page,'Settings');await page.locator('[data-settings-panel="lastDeal"]').click();
+  assert.equal(await page.locator('#last-deal-round').inputValue(),'7');
+  assert.equal(await page.locator('#last-deal-round option').count(),1);
+  assert.match(await page.locator('.last-deal-summary').textContent(),/Second table/);
+  assert.equal(requests.length,0);assert.deepEqual(errors,[]);
+});
