@@ -50,3 +50,24 @@ test('local arrangement snapshots are independent and tied to physical hand IDs'
   assert.equal(snapshot.handKey,handIdentity([...hand].reverse()));
   assert.notEqual(snapshot.handKey,handIdentity([hand[0]]));
 });
+
+test('recent chat attention tracks message IDs, sender identity and retained history only',async()=>{
+  const {recentChatState}=await import('../public/board-state.js');
+  const messages=[{id:'old',playerId:'other',name:'Me'}];
+  const baseline=recentChatState(null,messages,'me'); assert.deepEqual(baseline.unread,[]);
+  const next=recentChatState(baseline,[...messages,{id:'mine',playerId:'me'},{id:'new',playerId:'other',name:'Me'}],'me');
+  assert.deepEqual(next.unread,['new']); assert.deepEqual(baseline.unread,[]);
+  assert.deepEqual(recentChatState(next,[{id:'new',playerId:'other'}],'me').unread,['new']);
+  assert.deepEqual(recentChatState(next,[{id:'mine',playerId:'me'}],'me').unread,[]);
+  assert.deepEqual(recentChatState(next,[{id:'new',playerId:'other'}],'me',true).unread,[]);
+});
+
+test('round outcome requires server settlement and separates winner, penalties and profile reward',async()=>{
+  const {roundOutcome}=await import('../public/board-state.js');
+  const state={status:'playing',me:'me',result:{winner:'other',scores:[{id:'me',penalty:20,total:40,dropped:true}],pointsAward:{winner:'other',eligible:true,amount:100}}};
+  assert.equal(roundOutcome(state),null);
+  state.status='finished'; assert.deepEqual(roundOutcome(state),{won:false,dropped:true,penalty:20,total:40,reward:0});
+  state.result.winner='me';state.result.pointsAward.winner='me';assert.equal(roundOutcome(state).reward,100);
+  state.result.pointsAward.eligible=false;assert.equal(roundOutcome(state).reward,0);
+  state.result.scores=[];assert.equal(roundOutcome(state).penalty,null);
+});

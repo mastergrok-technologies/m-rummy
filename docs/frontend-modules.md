@@ -12,7 +12,8 @@ The browser entry point is `public/app.js`. It owns session state, networking, t
 | `public/ui/avatars.js` | Strict IDs and paths for the five bundled account avatars | None |
 | `public/ui/profile.js` | Player profile, avatar form, filtered points history and round-detail markup | Caller-provided profile, offset and formatting functions |
 | `public/ui/waiting-room.js` | Waiting-room seats, host controls, invite and chat markup | Room snapshot, draft and caller-provided helpers |
-| `public/ui/gameplay.js` | In-game table, cards, round results and sidebar markup | Room snapshot, local hand grouping, draft and helper functions |
+| `public/ui/gameplay.js` | In-game table, cards and sidebar markup | Room snapshot, local hand grouping, draft and helper functions |
+| `public/ui/round-results.js` | Finished-round personal summary, score table and next-round actions | Server results, board-state and caller-provided helpers |
 | `public/ui/panels/chat.js` | Private table chat dialog markup | Messages, composer state and helpers |
 | `public/ui/panels/information.js` | Game information and room rules dialog markup | Room snapshot and formatting helpers |
 | `public/ui/panels/settings.js` | Display settings dialog markup | Preferences, last-deal availability and save status |

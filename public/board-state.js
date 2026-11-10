@@ -55,3 +55,17 @@ export function gameplayGuidance(room, selected) {
   if (card.id === room.drawnOpen) return { ...base, step: 'blocked', title: 'Choose a different discard', detail: 'You just picked this card from the open deck. It cannot be your discard on this turn.' };
   return { ...base, canDiscard: true, step: 'ready', title: `Selected: ${cardDescription(card)}`, detail: 'Discard this card to end your turn, or declare if the remaining 13 cards form a valid hand.' };
 }
+
+export function recentChatState(previous, messages, me, read = false) {
+  const keys=messages.map((m,i)=>m.id || `${m.time}:${m.playerId || m.name}:${i}`);
+  const known=new Set(previous?.known || []), available=new Set(keys);
+  const unread=new Set((previous?.unread || []).filter(key=>available.has(key)));
+  if(previous) messages.forEach((message,i)=>{if(!known.has(keys[i])&&message.playerId!==me)unread.add(keys[i]);});
+  return {known:keys,unread:read?[]:[...unread]};
+}
+export function roundOutcome(state) {
+  if(state.status!=='finished'||!state.result)return null;
+  const own=state.result.scores.find(score=>score.id===state.me);
+  const award=state.result.pointsAward;
+  return {won:state.result.winner===state.me,dropped:!!own?.dropped,penalty:own?.penalty??null,total:own?.total??null,reward:award?.eligible&&award.winner===state.me?award.amount:0};
+}

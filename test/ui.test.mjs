@@ -50,10 +50,10 @@ async function fixture(t, viewport = { width: 1920, height: 1080 }, multi = fals
         if (input.action === 'declare') return route.fulfill({ status: 400, json: { error: 'Your hand needs a pure sequence.' } });
         if (input.action === 'addBot') target.players.push({ id: `bot-${target.players.length}`, name: 'Practice bot', bot: true, total: 0, count: 0, turns: 0 });
         if (input.action === 'removeBot') target.players = target.players.filter(p => p.id !== input.playerId);
-        if (input.action === 'start') { target.status = 'playing'; target.round = 1; target.hand = hand; }
+        if (input.action === 'start') { target.status = 'playing'; target.round = (target.round || 0) + 1; target.result = null; target.phase = 'draw'; target.drawnOpen = null; target.deadline = Date.now() + 60000; target.hand = hand; }
         if (input.action === 'draw') { const drawn = input.source === 'discard' ? target.topDiscard : { id: 'drawn', rank: 2, suit: 'S' }; target.phase = 'discard'; target.drawnOpen = input.source === 'discard' ? drawn.id : null; target.hand = [...target.hand, drawn]; }
         if (input.action === 'discard') { target.hand = target.hand.filter(c => c.id !== input.cardId); target.turn = 'other'; target.phase = 'draw'; target.deadline = Date.now() + 60000; }
-        if (input.action === 'chat') target.messages.push({ id: `m${requests.length}`, name: 'Me', text: input.text, time: Date.now() });
+        if (input.action === 'chat') target.messages.push({ id: `m${requests.length}`, name: 'Me', playerId: target.me, text: input.text, time: Date.now() });
         target.version++;
         return route.fulfill({ json: { ...target, serverTime: Date.now() } });
       }
@@ -1331,5 +1331,82 @@ for(const viewport of [{width:390,height:844},{width:768,height:1024},{width:192
     assert.match(await page.locator('#hand-action-hint').innerText(),/fresh snapshot/);
     f.setOffline(false);await page.evaluate(()=>window.dispatchEvent(new Event('online')));
     await page.waitForFunction(()=>!document.querySelector('[data-action="discard"]').disabled);
+  });
+}
+
+test('Joined filters retain table numbers and turn attention opens the right game', async t => {
+  const {page,room,rooms,requests,errors}=await fixture(t,{width:390,height:844},true);
+  const waiting=rooms.get('BBBBBB123456'); waiting.status='lobby'; waiting.round=0; waiting.hand=[]; waiting.turn=null; waiting.version++;
+  await page.locator('[data-home]').click();
+  await page.locator('[data-home-tab="joined"]').click();
+  await page.waitForFunction(()=>document.querySelector('.home-table-state')?.textContent==='Your turn'&&document.querySelectorAll('.home-table-state')[1]?.textContent==='Waiting for players');
+  await page.locator('[data-home-filter="lobby"]').click();
+  assert.deepEqual(await page.locator('.home-table h3').allTextContents(),['Table 2']);
+  await page.locator('[data-home-filter="finished"]').click();
+  await page.getByText('No tables match this filter',{exact:true}).waitFor();
+  await page.getByRole('button',{name:'Show all tables',exact:true}).click();
+  assert.equal(await page.locator('.home-table').count(),2);
+  await page.locator('[data-home-filter="your-turn"]').click();
+  assert.deepEqual(await page.locator('.home-table h3').allTextContents(),['Table 1']);
+  await waitingScreenshot(page,'joined-turn-filter-mobile');
+  await page.locator(`[data-attention-table="${room.code}"]`).click();
+  await page.locator('[data-card="card-0"]').waitFor();
+  assert.equal(await page.locator(`[data-table-progress="${room.code}"]`).isVisible(),true);
+  assert.equal(await page.locator('[data-table-progress="BBBBBB123456"]').isVisible(),false);
+  assert.equal(requests.length,0); assert.deepEqual(errors,[]);
+});
+
+test('new chat messages respect reading position and count peers with the same name',async t=>{
+  const messages=Array.from({length:30},(_,i)=>({id:`baseline-${i}`,playerId:'other',name:'Me',text:`History ${i}`,time:Date.now()+i}));
+  const {page,room,requests,errors}=await fixture(t,{width:390,height:844},false,{messages});
+  await open(page,'Chat');
+  await page.locator('#dialog-messages').evaluate(el=>{el.scrollTop=0;el.dispatchEvent(new Event('scroll'));});
+  await page.locator('#dialog-chat-input').fill('Keep this draft');
+  await page.locator('#dialog-chat-input').evaluate(el=>el.setSelectionRange(2,7));
+  room.messages.push({id:'peer-update',playerId:'other',name:'Me',text:'New peer message',time:Date.now()});room.version++;
+  await page.locator('#dialog-messages').getByText('New peer message',{exact:true}).waitFor({state:'attached'});
+  assert.equal(await page.locator('#dialog-messages').evaluate(el=>el.scrollTop),0);
+  assert.deepEqual(await page.locator('#dialog-chat-input').evaluate(el=>[el.selectionStart,el.selectionEnd]),[2,7]);
+  assert.equal(await page.locator('#chat-unread-count').textContent(),'1');
+  await page.locator('#dialog-chat-latest').click();
+  await page.waitForFunction(()=>document.querySelector('#chat-unread-count').hidden);
+  assert.equal(await page.locator('#dialog-messages').evaluate(el=>el.scrollHeight-el.clientHeight-el.scrollTop<2),true);
+  assert.equal(await page.locator('#dialog-chat-input').inputValue(),'Keep this draft');
+  await waitingScreenshot(page,'chat-latest-mobile');
+  assert.equal(requests.length,0);assert.deepEqual(errors,[]);
+});
+
+test('sidebar chat keeps its draft selection and older history through an update',async t=>{
+  const messages=Array.from({length:30},(_,i)=>({id:`sidebar-${i}`,playerId:'other',name:'Friend',text:`Sidebar history ${i}`,time:Date.now()+i}));
+  const {page,room,errors}=await fixture(t,undefined,false,{messages});
+  await page.locator('#chat-input').fill('Keep selected words');
+  await page.locator('#chat-input').evaluate(el=>el.setSelectionRange(5,13));
+  await page.locator('#messages').evaluate(el=>{el.scrollTop=0;el.dispatchEvent(new Event('scroll'));});
+  room.messages.push({id:'sidebar-new',playerId:'other',name:'Friend',text:'Sidebar new message',time:Date.now()});room.version++;
+  await page.locator('#messages').getByText('Sidebar new message',{exact:true}).waitFor({state:'attached'});
+  assert.equal(await page.locator('#messages').evaluate(el=>el.scrollTop),0);
+  assert.deepEqual(await page.locator('#chat-input').evaluate(el=>[el.selectionStart,el.selectionEnd]),[5,13]);
+  await page.locator('#sidebar-chat-latest').click();
+  assert.equal(await page.locator('#messages').evaluate(el=>el.scrollHeight-el.clientHeight-el.scrollTop<2),true);
+  assert.equal(await page.locator('#chat-input').inputValue(),'Keep selected words');assert.deepEqual(errors,[]);
+});
+
+for(const viewport of [{width:390,height:844},{width:768,height:1024},{width:1920,height:1080}]){
+  test(`Round Results explain personal penalties and allow a rematch at ${viewport.width}px`,async t=>{
+    const result={winner:'me',winnerName:'Me',reason:'declaration',groups:[],scores:[{id:'me',name:'Me',penalty:0,total:15,hand:[]},{id:'other',name:'Friend',penalty:40,total:50,hand:[]}],pointsAward:{eligible:true,winner:'me',amount:100}};
+    const {page,requests,errors}=await fixture(t,viewport,false,{status:'finished',result});
+    await page.getByRole('region',{name:'Your round summary',exact:true}).waitFor();
+    assert.match(await page.locator('.personal-round').innerText(),/YOU WON THIS ROUND/);
+    assert.match(await page.locator('.personal-round').innerText(),/Profile points earned\s*\+100/);
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+    await waitingScreenshot(page,`round-results-${viewport.width}`);
+    await page.locator('[data-review-round]').click();
+    await page.getByRole('dialog',{name:'Table standings',exact:true}).waitFor();await close(page);
+    await page.locator('[data-results-home]').click();await page.locator('.home-page').waitFor();
+    await page.locator('[data-home-filter="finished"]').click();
+    await page.locator('[data-switch-table="ABCDEF123456"]').click();
+    await page.locator('[data-action="start"]').click();await page.locator('[data-card="card-0"]').waitFor();
+    assert.equal(await page.locator('.personal-round').count(),0);
+    assert.deepEqual(requests.map(r=>r.action),['start']);assert.deepEqual(errors,[]);
   });
 }

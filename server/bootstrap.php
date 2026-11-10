@@ -198,7 +198,7 @@ function rummy_handle(array &$store, array $config, string $route, string $metho
             rummy_require(is_string($text) && trim($text) !== '' && strlen($text) <= 960 && preg_match('//u', $text) === 1, 'Messages must be 1–240 characters.');
             rummy_require(count(preg_split('//u', $text, -1, PREG_SPLIT_NO_EMPTY)) <= 240, 'Messages must be 1–240 characters.');
             $p = $room['players'][rummy_find($room, $id)];
-            $room['messages'][] = ['id' => bin2hex(random_bytes(8)), 'name' => $p['name'], 'text' => trim($text), 'time' => $now];
+            $room['messages'][] = ['id' => bin2hex(random_bytes(8)), 'name' => $p['name'], 'playerId' => $id, 'text' => trim($text), 'time' => $now];
             $room['messages'] = array_slice($room['messages'], -40); $room['version']++; $room['updatedAt'] = $now; break;
         default: throw new RummyApiError('Unknown table action.');
     }
