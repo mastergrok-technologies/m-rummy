@@ -16,7 +16,7 @@ The browser entry point is `public/app.js`. It owns session state, networking, t
 | `public/ui/panels/chat.js` | Private table chat dialog markup | Messages, composer state and helpers |
 | `public/ui/panels/information.js` | Game information and room rules dialog markup | Room snapshot and formatting helpers |
 | `public/ui/panels/settings.js` | Display settings dialog markup | Preferences, last-deal availability and save status |
-| `public/board-state.js` | Pure table state calculations | None |
+| `public/board-state.js` | Pure table state calculations, phase guidance and hand-bound arrangement snapshots | None |
 | `public/tutorial.js` | Tutorial content | None |
 
 ## Rules for further extraction

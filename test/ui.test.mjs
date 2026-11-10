@@ -51,7 +51,7 @@ async function fixture(t, viewport = { width: 1920, height: 1080 }, multi = fals
         if (input.action === 'addBot') target.players.push({ id: `bot-${target.players.length}`, name: 'Practice bot', bot: true, total: 0, count: 0, turns: 0 });
         if (input.action === 'removeBot') target.players = target.players.filter(p => p.id !== input.playerId);
         if (input.action === 'start') { target.status = 'playing'; target.round = 1; target.hand = hand; }
-        if (input.action === 'draw') { target.phase = 'discard'; target.hand = [...target.hand, { id: 'drawn', rank: 2, suit: 'S' }]; }
+        if (input.action === 'draw') { const drawn = input.source === 'discard' ? target.topDiscard : { id: 'drawn', rank: 2, suit: 'S' }; target.phase = 'discard'; target.drawnOpen = input.source === 'discard' ? drawn.id : null; target.hand = [...target.hand, drawn]; }
         if (input.action === 'discard') { target.hand = target.hand.filter(c => c.id !== input.cardId); target.turn = 'other'; target.phase = 'draw'; target.deadline = Date.now() + 60000; }
         if (input.action === 'chat') target.messages.push({ id: `m${requests.length}`, name: 'Me', text: input.text, time: Date.now() });
         target.version++;
@@ -1250,3 +1250,86 @@ test('uncertain suggestion save retains the draft and recovers the same receipt 
   await page.getByRole('heading',{name:'Submission Confirmation',exact:true}).waitFor();
   assert.equal(receipts.size,1); assert.equal(submissions.length,2); assert.equal(submissions[0].id,submissions[1].id);
 });
+
+test('local arrangement undo and clear selection stay scoped to a table and expire after drawing', async t => {
+  const {page,room,requests,errors}=await fixture(t,{width:390,height:844},true);
+  for(const id of ['card-0','card-1','card-2']) await page.locator(`[data-card="${id}"]`).click();
+  await page.locator('[data-action="group"]').click();
+  assert.equal(await page.locator('.ungroup').count(),1);
+  await page.locator('[data-switch-table="BBBBBB123456"]').click();
+  await page.waitForURL('**/?room=BBBBBB123456');
+  assert.equal(await page.locator('[data-action="undo-arrangement"]').isDisabled(),true);
+  await page.locator(`[data-switch-table="${room.code}"]`).click();
+  await page.waitForURL(`**/?room=${room.code}`);
+  await page.locator('[data-action="undo-arrangement"]').click();
+  assert.equal(await page.locator('.ungroup').count(),0);
+  assert.equal(await page.locator('.hand-scroll .selected').count(),3);
+  assert.equal(await page.locator('[data-action="undo-arrangement"]').isDisabled(),true);
+  await page.locator('[data-action="clear-selection"]').click();
+  assert.equal(await page.locator('.hand-scroll .selected').count(),0);
+  await page.locator('[data-action="sort"]').click();
+  assert.equal(await page.locator('[data-action="undo-arrangement"]').isEnabled(),true);
+  await page.locator('[data-draw="stock"]').click();
+  await page.locator('[data-card="drawn"]').waitFor();
+  assert.equal(await page.locator('[data-action="undo-arrangement"]').isDisabled(),true);
+  assert.deepEqual(requests.map(r=>r.action),['draw']); assert.deepEqual(errors,[]);
+});
+
+test('picked open card explains the restriction before an invalid discard or declaration is sent',async t=>{
+  const {page,requests}=await fixture(t,undefined,false,{topDiscard:{id:'drawn',rank:6,suit:'S'}});
+  await page.locator('[data-draw="discard"]').click(); await page.locator('[data-card="drawn"]').waitFor();
+  await page.locator('[data-card="drawn"]').click();
+  await page.getByRole('heading',{name:'Choose a different discard',exact:true}).waitFor();
+  assert.equal(await page.locator('[data-action="discard"]').isDisabled(),true);
+  assert.equal(await page.locator('[data-action="declare"]').isDisabled(),true);
+  assert.match(await page.locator('#hand-action-hint').innerText(),/open deck/);
+  await page.locator('[data-action="clear-selection"]').click();
+  await page.locator('[data-card="card-0"]').click();
+  assert.equal(await page.locator('[data-action="discard"]').isEnabled(),true);
+  await page.locator('[data-action="discard"]').click();
+  await page.waitForFunction(()=>document.querySelector('#turn-guide-title').textContent.includes('Friend'));
+  assert.deepEqual(requests.map(r=>r.action),['draw','discard']);
+});
+
+test('mobile hand position and keyboard focus survive selection and incoming snapshots',async t=>{
+  const {page,room,requests,errors}=await fixture(t,{width:390,height:844});
+  await open(page,'Settings');await page.getByLabel('Spread out hand cards').check();await close(page);
+  await page.locator('[data-action="show-hand"]').click();
+  const position=await page.locator('.hand-scroll').evaluate(el=>{el.scrollLeft=120;return el.scrollLeft;});
+  assert.ok(position>0);
+  const visible=await page.locator('.hand-scroll').evaluate(el=>{
+    const box=el.getBoundingClientRect();return [...el.querySelectorAll('[data-card]')].find(card=>{const r=card.getBoundingClientRect();return r.left>=box.left+8&&r.right<=box.right-8;}).dataset.card;
+  });
+  await page.locator(`[data-card="${visible}"]`).click();
+  assert.ok(Math.abs(await page.locator('.hand-scroll').evaluate(el=>el.scrollLeft)-position)<=1);
+  const pageY=await page.evaluate(()=>scrollY);
+  room.messages.push({name:'Friend',text:'Still here.',time:Date.now()});room.version++;
+  await page.getByText('Still here.',{exact:true}).waitFor();
+  assert.ok(Math.abs(await page.locator('.hand-scroll').evaluate(el=>el.scrollLeft)-position)<=1);
+  assert.equal(await page.evaluate(()=>document.activeElement.dataset.card),visible);
+  assert.ok(Math.abs(await page.evaluate(()=>scrollY)-pageY)<=2);
+  assert.equal(requests.length,0); assert.deepEqual(errors,[]);
+});
+
+for(const viewport of [{width:390,height:844},{width:768,height:1024},{width:1920,height:1080}]){
+  test(`turn guide and hand actions remain readable at ${viewport.width}px`,async t=>{
+    const f=await fixture(t,viewport,false,{deadline:Date.now()+9000});const {page}=f;
+    assert.match(await page.locator('#turn-guide-title').innerText(),/Draw one card/);
+    assert.equal(await page.locator('#hand-turn-timing').isVisible(),true);
+    assert.ok(Number(await page.locator('#turn-progress').getAttribute('value'))<=10);
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+    f.hold();await page.locator('[data-draw="stock"]').click();
+    await page.waitForFunction(()=>document.querySelector('#turn-guide-title').textContent.includes('Sending your action'));
+    assert.equal(await page.locator('[data-action="sort"]').isDisabled(),true);
+    f.release();await page.locator('[data-card="drawn"]').waitFor();
+    await page.locator('[data-action="show-hand"]').click();
+    await page.locator('[data-card="card-0"]').click();
+    assert.match(await page.locator('.selection-summary strong').innerText(),/Ace of hearts/);
+    await waitingScreenshot(page,`playing-experience-${viewport.width}`);
+    f.setOffline(true);await page.evaluate(()=>window.dispatchEvent(new Event('offline')));
+    assert.equal(await page.locator('[data-action="discard"]').isDisabled(),true);
+    assert.match(await page.locator('#hand-action-hint').innerText(),/fresh snapshot/);
+    f.setOffline(false);await page.evaluate(()=>window.dispatchEvent(new Event('online')));
+    await page.waitForFunction(()=>!document.querySelector('[data-action="discard"]').disabled);
+  });
+}

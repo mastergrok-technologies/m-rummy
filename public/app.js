@@ -14,15 +14,15 @@ import { profileMarkup } from './ui/profile.js';
 import { accountFormMarkup } from './ui/account.js';
 import { joinedTablesMarkup, tablePickerMarkup } from './ui/tables.js';
 import { tutorialSteps } from './tutorial.js';
-import { remainingSeconds, reconcileGroups, tableStandings, presencePresentation } from './board-state.js';
+import { remainingSeconds, reconcileGroups, tableStandings, presencePresentation, handIdentity, arrangementSnapshot, gameplayGuidance } from './board-state.js';
 const app = document.querySelector('#app');
 const suits = { S: '♠', H: '♥', D: '♦', C: '♣', J: '✦' };
 const ranks = { 0: 'JK', 1: 'A', 11: 'J', 12: 'Q', 13: 'K' };
 let session, state, busy = false, polling = false, failures = 0, mode = 'create', groups = [], selected = new Set(), chatDraft = '', clockOffset = 0;
-let lastCode = '', confirmAction;
+let lastCode = '', confirmAction, arrangementUndo = null;
 let connection = 'connected';
 let tables = [], tableLimit = 3, tableEpoch = 0, homeTab = 'points', pendingHomeInvite = '';
-const tableUi = new Map();
+const tableUi = new Map(), turnWarnings = new Map();
 const presenceClient = [...crypto.getRandomValues(new Uint8Array(16))].map(n => n.toString(16).padStart(2, '0')).join('');
 let presenceSequence = 0;
 let openGamePanel = null, declarationError = '', chatComposerMode = 'replies';
@@ -78,12 +78,15 @@ function accept(next) {
   if (state && next.code === state.code && next.version < state.version) return;
   if (state && (next.code !== state.code || next.round !== state.round)) stashTableUi();
   const changed = !state || next.version !== state.version || next.code !== state.code;
+  const sameHand = state && next.code === state.code && next.round === state.round && handIdentity(next.hand) === handIdentity(state.hand);
   if (!state || next.code !== state.code || next.round !== state.round) {
     try { groups = JSON.parse(sessionStorage.getItem(groupKey(next)) || '[]'); } catch { groups = []; }
     const saved = tableUi.get(next.code);
     selected = new Set(saved?.round === next.round ? saved.selected : []);
     chatDraft = saved?.chatDraft || ''; lastCode = next.code;
+    arrangementUndo = saved?.round === next.round && saved.handKey === handIdentity(next.hand) ? saved.undo : null;
   }
+  else if (!sameHand) arrangementUndo = null;
   state = next; rememberTable(next); clockOffset = next.serverTime - Date.now();
   setAccount(next.account || null);
   selected = new Set([...selected].filter(id => next.hand.some(c => c.id === id)));
@@ -254,12 +257,24 @@ function renderWaitingRoom() {
 }
 function renderRoom() {
   if (state.status === 'lobby') { renderWaitingRoom(); return; }
-  const focus = document.activeElement?.id;
-  const selectionStart = document.activeElement?.selectionStart;
+  const focused = document.activeElement;
+  const focus = focused?.id, focusedCard = focused?.dataset.card, focusedAction = focused?.dataset.action;
+  const selectionStart = focused?.selectionStart;
+  const sameView = app.dataset.gameView === `${state.code}:${state.round}`;
+  const handScroll = sameView ? document.querySelector('.hand-scroll')?.scrollLeft || 0 : 0;
+  const pageY = window.scrollY, focusInApp = app.contains(focused);
+  const handFocused = focused?.classList.contains('hand-scroll');
   app.className = `room-page ${state.status === 'playing' ? 'gameplay-page' : ''}`;
-  app.innerHTML = gameplayMarkup(state, groups, selected, chatDraft, roomChrome(), { esc, number, card, seatAvatar, turnText, ranks });
+  app.innerHTML = gameplayMarkup(state, groups, selected, chatDraft, roomChrome(), { esc, number, card, seatAvatar, turnText, ranks, canUndo: !!arrangementUndo });
   const messageBox = document.querySelector('#messages'); if (messageBox) messageBox.scrollTop = messageBox.scrollHeight;
-  if (focus === 'chat-input') { const input = document.querySelector('#chat-input'); input.focus(); input.setSelectionRange(selectionStart, selectionStart); }
+  app.dataset.gameView = `${state.code}:${state.round}`;
+  if (sameView && focusInApp) {
+    const target = focusedCard ? app.querySelector(`[data-card="${CSS.escape(focusedCard)}"]`) : focusedAction ? app.querySelector(`[data-action="${CSS.escape(focusedAction)}"]`) : handFocused ? app.querySelector('.hand-scroll') : focus ? document.getElementById(focus) : null;
+    (target && !target.disabled ? target : document.querySelector('#player-hand-title'))?.focus({ preventScroll: true });
+    if (focus === 'chat-input') document.querySelector('#chat-input').setSelectionRange(selectionStart, selectionStart);
+    window.scrollTo(0, pageY);
+  }
+  const hand = document.querySelector('.hand-scroll'); if (hand) hand.scrollLeft = handScroll;
   renderTableSwitcher(); updateClock(); syncControls(true);
 }
 function updateClock() {
@@ -267,10 +282,21 @@ function updateClock() {
   const el = document.querySelector('#turn-clock'); if (!el || !state) return;
   const seconds = remainingSeconds(state.deadline, clockOffset);
   el.textContent = `${seconds}s`; el.classList.toggle('urgent', seconds <= 15);
+  const timing = document.querySelector('#hand-turn-timing');
+  if (timing && !timing.hidden) {
+    document.querySelector('#hand-turn-clock').textContent = seconds ? `${seconds}s left to play` : 'Waiting for the table update…';
+    document.querySelector('#turn-progress').value = Math.min(60, seconds);
+    timing.classList.toggle('urgent', seconds <= 15);
+    const key = `${state.code}:${state.round}:${state.deadline}`;
+    if (seconds <= 10 && turnWarnings.get(state.code) !== key) {
+      turnWarnings.set(state.code, key); const live = document.querySelector('#turn-live');
+      if (live) live.textContent = seconds ? `Your turn has ${seconds} seconds remaining.` : 'Your turn time has elapsed. Waiting for a fresh table update.';
+    }
+  }
 }
 function stashTableUi() {
   if (!state) return;
-  saveGroups(); tableUi.set(state.code, { round: state.round, selected: [...selected], chatDraft });
+  saveGroups(); tableUi.set(state.code, { round: state.round, selected: [...selected], chatDraft, handKey: handIdentity(state.hand), undo: arrangementUndo });
 }
 function rememberTable(room) {
   const me = room.players.find(p => p.id === room.me);
@@ -303,6 +329,7 @@ function updateTableClocks() {
 }
 function acceptTableList(result) {
   tables = result.tables; tableLimit = result.tableLimit; clockOffset = result.serverTime - Date.now();
+  for (const code of turnWarnings.keys()) if (!tables.some(table => table.code === code)) turnWarnings.delete(code);
   renderTableSwitcher(); refreshHomeTables();
 }
 function tablePicker() {
@@ -460,11 +487,19 @@ function syncControls(fresh = false) {
     if (fresh || !button.dataset.legal) button.dataset.legal = button.disabled ? 'no' : 'yes';
     button.disabled = blocked || button.dataset.legal === 'no';
   });
-  app.querySelectorAll('[data-card], [data-ungroup], [data-action="sort"], [data-action="group"]').forEach(button => {
+  app.querySelectorAll('[data-card], [data-ungroup], [data-action="sort"], [data-action="group"], [data-action="undo-arrangement"], [data-action="clear-selection"]').forEach(button => {
     if (fresh || !button.dataset.legal) button.dataset.legal = button.disabled ? 'no' : 'yes';
     button.disabled = busy || button.dataset.legal === 'no';
   });
   updatePresence();
+  const guideTitle = document.querySelector('#turn-guide-title'), guideDetail = document.querySelector('#turn-guide-detail');
+  if (guideTitle) {
+    const guide = gameplayGuidance(state, selected);
+    guideTitle.textContent = busy ? 'Sending your action…' : connection !== 'connected' ? 'Refreshing your table…' : guide.title;
+    const detail = connection !== 'connected' ? 'Your hand is kept here. Server timers continue; actions resume after a fresh snapshot.' : busy ? 'Wait for confirmation before choosing another action.' : guide.detail;
+    guideDetail.textContent = detail;
+    const handHint = document.querySelector('#hand-action-hint'); if (handHint) handHint.textContent = detail;
+  }
   app.setAttribute('aria-busy', String(busy));
   const indicator = document.querySelector('#connection');
   if (indicator) {
@@ -485,10 +520,12 @@ function syncControls(fresh = false) {
 function setConnection(next) { connection = next; syncControls(); }
 async function action(actionName, extra = {}) {
   if (busy || !state || connection !== 'connected') return false;
+  const previousArrangement = actionName === 'arrange' ? arrangementSnapshot(groups, selected, state.hand) : null;
   tableEpoch++; busy = true; syncControls();
   try {
     const result = await request('/api/action', { code: state.code, version: state.version, action: actionName, ...extra });
     if (actionName === 'arrange') {
+      arrangementUndo = previousArrangement;
       groups = result.groups.map(g => {
         const highAce = g.ids.some(id => state.hand.find(c => c.id === id)?.rank === 13);
         const rank = c => c.rank === 1 && highAce ? 14 : c.rank || 99;
@@ -498,7 +535,8 @@ async function action(actionName, extra = {}) {
       saveGroups(); selected.clear(); renderRoom();
       toast(result.valid && state.hand.length === 13 ? 'Your 13 cards form a valid declaration.' : 'Grouped your hand. After drawing, select a final discard to declare.');
     } else if (result.left) {
-      tableUi.delete(state.code); tables = tables.filter(t => t.code !== state.code); tablePicker();
+      const departed = state.code; state = null; arrangementUndo = null;
+      tableUi.delete(departed); tables = tables.filter(t => t.code !== departed); tablePicker();
     }
     else { if (['discard', 'declare'].includes(actionName)) selected.clear(); accept(result); saveGroups(); }
     return true;
@@ -535,9 +573,9 @@ app.addEventListener('click', async event => {
   if (target.dataset.mode) { mode = target.dataset.mode; landing(); return; }
   if (target.dataset.card) {
     const id = target.dataset.card; selected.has(id) ? selected.delete(id) : selected.add(id);
-    renderRoom(); document.querySelector(`[data-card="${CSS.escape(id)}"]`)?.focus(); return;
+    renderRoom(); document.querySelector(`[data-card="${CSS.escape(id)}"]`)?.focus({ preventScroll: true }); return;
   }
-  if (target.dataset.ungroup !== undefined) { groups.splice(Number(target.dataset.ungroup), 1); saveGroups(); renderRoom(); return; }
+  if (target.dataset.ungroup !== undefined) { arrangementUndo = arrangementSnapshot(groups, selected, state.hand); groups.splice(Number(target.dataset.ungroup), 1); saveGroups(); renderRoom(); return; }
   if (target.dataset.remove) return action('removeBot', { playerId: target.dataset.remove });
   if (target.dataset.draw) return action('draw', { source: target.dataset.draw });
   switch (target.dataset.action) {
@@ -547,12 +585,21 @@ app.addEventListener('click', async event => {
     }
     case 'rules': document.querySelector('#rules-dialog').showModal(); break;
     case 'tutorial': showTutorial(); break;
+    case 'show-hand': document.querySelector('#player-hand-panel')?.scrollIntoView({ block: 'start', behavior: 'auto' }); document.querySelector('#player-hand-title')?.focus({ preventScroll: true }); break;
+    case 'clear-selection': selected.clear(); renderRoom(); break;
+    case 'undo-arrangement': {
+      if (!arrangementUndo || arrangementUndo.handKey !== handIdentity(state.hand)) break;
+      groups = reconcileGroups(arrangementUndo.groups, state.hand); selected = new Set(arrangementUndo.selected); arrangementUndo = null;
+      saveGroups(); renderRoom(); toast('Previous card arrangement restored.'); break;
+    }
     case 'sort': {
+      arrangementUndo = arrangementSnapshot(groups, selected, state.hand);
       const sorted = [...state.hand].sort((a, b) => ['S', 'H', 'C', 'D', 'J'].indexOf(a.suit) - ['S', 'H', 'C', 'D', 'J'].indexOf(b.suit) || a.rank - b.rank);
       groups = [{ ids: sorted.map(c => c.id), title: 'Sorted by suit' }]; selected.clear(); saveGroups(); renderRoom(); break;
     }
     case 'group': {
       if (selected.size < 3) break;
+      arrangementUndo = arrangementSnapshot(groups, selected, state.hand);
       groups = groups.map(g => ({ ...g, title: 'Group', ids: g.ids.filter(id => !selected.has(id)) })).filter(g => g.ids.length);
       groups.push({ title: 'Your group', ids: [...selected] }); selected.clear(); saveGroups(); renderRoom(); break;
     }

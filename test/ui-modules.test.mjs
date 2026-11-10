@@ -252,3 +252,20 @@ test('suggestion and receipt views escape draft/result text and expose actual se
   assert.match(html, /Reference/); assert.match(html, /Your suggestion is saved/);
   assert.doesNotMatch(html, /<script\b/); assert.match(html, /for the host to review/);
 });
+
+test('gameplay guidance exposes selection recovery and blocks the just-picked open card', () => {
+  const state=gameplayState(); state.phase='discard'; state.drawnOpen='c0';
+  const blocked=gameplayMarkup(state,[],new Set(['c0']),'','',{...gameplayHelpers,canUndo:true});
+  assert.match(blocked,/Choose a different discard/);
+  assert.match(blocked,/data-action="discard" disabled/);
+  assert.match(blocked,/data-action="declare" disabled/);
+  assert.match(blocked,/data-action="undo-arrangement" >/);
+  assert.match(blocked,/data-action="clear-selection" >/);
+  const ready=gameplayMarkup(state,[],new Set(['c1']),'','',gameplayHelpers);
+  assert.match(ready,/data-action="discard" >/);
+  assert.match(ready,/2 of hearts/);
+  assert.match(ready,/Seconds remaining in your turn/);
+  state.turn='friend'; state.players[1].name='<script>alert(1)</script>';
+  const waiting=gameplayMarkup(state,[],new Set(),'','',gameplayHelpers);
+  assert.match(waiting,/&lt;script>alert/); assert.doesNotMatch(waiting,/<script\b/);
+});
