@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__ . '/accounts.php';
+require_once __DIR__ . '/feedback.php';
 require_once __DIR__ . '/presence.php';
 
 final class RummyApiError extends RuntimeException {
@@ -110,6 +111,17 @@ function rummy_handle(array &$store, array $config, string $route, string $metho
         $accountId = rummy_verify_login($store, $input['username'] ?? null, $input['password'] ?? null);
         return rummy_rotate_session($store, $token, $accountId, true, $config);
     }
+    if (in_array($route, ['username', 'feedback'], true)) {
+        if (empty($session['accountId'])) throw new RummyApiError('Sign in to use account settings.', 401);
+        if ($route === 'username') {
+            if ($method !== 'POST') throw new RummyApiError('Method not allowed.', 405);
+            rummy_require(count($input) === 2 && isset($input['username'], $input['currentPassword']), 'Enter your new username and current password.');
+            rummy_limit($store, "username:$id", 5, 900000);
+            rummy_change_username($store, $id, $input['username'], $input['currentPassword']);
+            return rummy_profile($store, $id);
+        }
+        return $method === 'POST' ? rummy_submit_feedback($store, $id, $input) : rummy_feedback_receipt($store, $id, $_GET['id'] ?? null);
+    }
     if ($route === 'profile') {
         if (empty($session['accountId'])) throw new RummyApiError('Sign in to view your profile.', 401);
         if ($method === 'POST') {
@@ -207,7 +219,7 @@ function rummy_api(): void {
     try {
         $method = $_SERVER['REQUEST_METHOD']; $route = $_GET['route'] ?? '';
         if (!in_array($method, ['GET', 'POST'], true)) throw new RummyApiError('Method not allowed.', 405);
-        if (!is_string($route) || !in_array($route, ['session', 'room', 'tables', 'create', 'join', 'action', 'register', 'login', 'logout', 'profile'], true)) throw new RummyApiError('Not found.', 404);
+        if (!is_string($route) || !in_array($route, ['session', 'room', 'tables', 'create', 'join', 'action', 'register', 'login', 'logout', 'profile', 'username', 'feedback'], true)) throw new RummyApiError('Not found.', 404);
         if (!is_int($config['win_points_per_opponent']) || $config['win_points_per_opponent'] < 1 || $config['win_points_per_opponent'] > 10000) throw new LogicException('Invalid win points configuration.');
         $input = [];
         if ($method === 'POST') {

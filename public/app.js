@@ -1,3 +1,4 @@
+import { accountPageMarkup } from './ui/account-pages.js';
 import { avatarSource } from './ui/avatars.js';
 import { homeMarkup, homeTablesMarkup } from './ui/home.js';
 import { lastDealPanelMarkup } from './ui/panels/last-deal.js';
@@ -40,6 +41,8 @@ const groupKey = room => `mr-groups-${room.code}-${room.round}`;
 const commandSelector = '[data-draw], [data-remove], [data-action="start"], [data-action="addBot"], [data-action="drop"], [data-action="discard"], [data-action="declare"], [data-action="arrange"], [data-action="leave"], #chat-form button';
 let authMode = 'register', account = null, profileOffset = 0, authBusy = false;
 let profileFilter = 'all', profileBusy = false, profileEpoch = 0, profileData = null;
+let accountPage = null, accountPageEpoch = 0, feedbackDraft = { category: 'idea', message: '', id: null };
+const feedbackKey = () => `mr-feedback-${account?.id || ''}`;
 const number = value => Number(value || 0).toLocaleString('en-IN');
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const label = c => `${ranks[c.rank] || c.rank} ${c.suit === 'J' ? 'printed joker' : ({ S: 'spades', H: 'hearts', D: 'diamonds', C: 'clubs' })[c.suit]}`;
@@ -440,7 +443,7 @@ function updatePresence() {
   }
 }
 function syncControls(fresh = false) {
-  updateConnectionNotice(); syncProfileControls();
+  updateConnectionNotice(); syncProfileControls(); syncAccountPageControls();
   for (const button of document.querySelectorAll('[data-switch-table], [data-add-table], [data-home-entry], #table-entry-form button[type="submit"]')) button.disabled = busy || connection !== 'connected' || ((button.hasAttribute('data-add-table') || button.hasAttribute('data-home-entry')) && tables.length >= tableLimit);
   for (const button of document.querySelectorAll('[data-home], [data-home-tab]')) button.disabled = busy;
   if (!state) {
@@ -676,6 +679,13 @@ function setTableEntryMode(mode) {
 }
 document.addEventListener('click', event => {
   const button = event.target.closest('button'); if (!button || button.disabled) return;
+  if (button.dataset.accountView) { showAccountPage(button.dataset.accountView); return; }
+  if (button.hasAttribute('data-account-back')) {
+    if (!busy) { document.querySelector('#account-pages-dialog').close(); loadProfile(); }
+    return;
+  }
+  if (button.hasAttribute('data-feedback-new')) { if (!busy) { feedbackDraft = { category: 'idea', message: '', id: null }; showAccountPage('feedback'); } return; }
+  if (button.hasAttribute('data-feedback-last')) { loadFeedbackReceipt(); return; }
   if (button.dataset.switchTable) { switchTable(button.dataset.switchTable); return; }
   if (button.hasAttribute('data-home') && !busy) { showHome('joined'); return; }
   if (button.dataset.homeTab && !busy) { showHome(button.dataset.homeTab); document.querySelector(`[data-home-tab="${homeTab}"]`).focus(); return; }
@@ -727,6 +737,7 @@ document.querySelector('#profile-dialog').addEventListener('click', async event 
     try {
       session = await request('/api/logout', { logout: true });
       document.querySelector('#profile-dialog').close(); state = null; lastCode = ''; selected.clear(); groups = []; chatDraft = ''; tables = []; tableUi.clear();
+      feedbackDraft = { category: 'idea', message: '', id: null }; accountPageEpoch++;
       history.replaceState({}, '', '/'); setAccount(null); authMode = 'login'; landing(); toast('Signed out. Your points are saved.');
     } catch (e) { toast(e.message, true); target.disabled = false; }
     finally { busy = false; }
@@ -764,6 +775,86 @@ document.querySelector('#profile-dialog').addEventListener('submit', async event
     busy = false;
     if (epoch === profileEpoch) { profileBusy = false; syncProfileControls(); }
     syncControls();
+  }
+});
+function lastFeedbackId() {
+  try { return sessionStorage.getItem(feedbackKey()) || ''; } catch { return ''; }
+}
+function showAccountPage(view, receipt = null) {
+  if (!account || busy || profileBusy || !['username', 'feedback', 'feedback-receipt'].includes(view)) return;
+  accountPageEpoch++; accountPage = view;
+  document.querySelector('#profile-dialog').close();
+  const dialog = document.querySelector('#account-pages-dialog'); dialog.dataset.view = view;
+  document.querySelector('#account-page-title').textContent = { username: 'Change Username', feedback: 'Suggestion Box', 'feedback-receipt': 'Submission Confirmation' }[view];
+  document.querySelector('#account-page-content').innerHTML = accountPageMarkup(view, { username: account.username, draft: feedbackDraft, lastId: lastFeedbackId(), receipt }, esc);
+  dialog.querySelector('.account-page-back').hidden = view === 'feedback-receipt';
+  if (!dialog.open) dialog.showModal();
+  syncAccountPageControls(); document.querySelector('#account-page-title').focus();
+}
+function syncAccountPageControls() {
+  const dialog = document.querySelector('#account-pages-dialog');
+  if (!dialog.open) return;
+  dialog.setAttribute('aria-busy', String(busy));
+  for (const control of dialog.querySelectorAll('button,input,textarea,select')) {
+    if (control.hasAttribute('data-close')) continue;
+    control.disabled = busy || (control.matches('button[type="submit"], [data-feedback-last]') && connection !== 'connected');
+  }
+}
+async function loadFeedbackReceipt() {
+  const id = lastFeedbackId(); if (!id || busy || !account || connection !== 'connected') return;
+  const epoch = accountPageEpoch; busy = true; syncControls();
+  try {
+    const receipt = await request(`/api/feedback?id=${encodeURIComponent(id)}`);
+    busy = false;
+    if (epoch === accountPageEpoch && document.querySelector('#account-pages-dialog').open) showAccountPage('feedback-receipt', receipt);
+  } catch (e) {
+    if (epoch === accountPageEpoch) document.querySelector('#account-page-status').textContent = e.message;
+  } finally { busy = false; syncControls(); }
+}
+document.querySelector('#account-pages-dialog').addEventListener('close', () => {
+  accountPageEpoch++; accountPage = null;
+  const password = document.querySelector('#rename-password'); if (password) password.value = '';
+  document.querySelector('#profile-button')?.focus();
+});
+document.querySelector('#account-pages-dialog').addEventListener('input', event => {
+  if (!['feedback-message', 'feedback-category'].includes(event.target.id)) return;
+  feedbackDraft.message = document.querySelector('#feedback-message').value;
+  feedbackDraft.category = document.querySelector('#feedback-category').value;
+  feedbackDraft.id = null;
+  document.querySelector('#feedback-count').textContent = `${feedbackDraft.message.length}/1000`;
+});
+document.querySelector('#account-pages-dialog').addEventListener('submit', async event => {
+  if (!['username-form','feedback-form'].includes(event.target.id)) return;
+  event.preventDefault(); if (busy || !account || connection !== 'connected') return;
+  const rename = event.target.id === 'username-form', epoch = accountPageEpoch, accountId = account.id;
+  const input = Object.fromEntries(new FormData(event.target));
+  if (!rename) {
+    feedbackDraft.id ||= [...crypto.getRandomValues(new Uint8Array(16))].map(n => n.toString(16).padStart(2, '0')).join('');
+    input.id = feedbackDraft.id;
+  }
+  const status = document.querySelector('#account-page-status');
+  tableEpoch++; busy = true; syncControls(); status.textContent = rename ? 'Saving username…' : 'Saving suggestion…';
+  try {
+    const result = await request(rename ? '/api/username' : '/api/feedback', input);
+    if (!account || account.id !== accountId) return;
+    if (rename) {
+      setAccount(result); if (profileData) profileData.username = result.username;
+      if (epoch === accountPageEpoch) {
+        document.querySelector('#new-username').value = result.username;
+        status.textContent = `Username saved. Sign in as ${result.username} next time.`;
+      }
+    } else {
+      try { sessionStorage.setItem(feedbackKey(), result.id); } catch { /* Receipt remains visible without storage. */ }
+      feedbackDraft = { category: 'idea', message: '', id: null };
+      busy = false;
+      if (epoch === accountPageEpoch && document.querySelector('#account-pages-dialog').open) showAccountPage('feedback-receipt', result);
+    }
+  } catch (e) {
+    if (!e.status || e.status >= 500) setConnection('reconnecting');
+    if (epoch === accountPageEpoch) status.textContent = rename ? e.message : `Could not confirm the save. ${e.message} Retry the unchanged message to recover its receipt.`;
+  } finally {
+    const password = event.target.querySelector('[name="currentPassword"]'); if (password) password.value = '';
+    busy = false; syncControls();
   }
 });
 document.querySelectorAll('dialog').forEach(dialog => {

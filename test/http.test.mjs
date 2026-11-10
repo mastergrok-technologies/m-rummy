@@ -29,7 +29,7 @@ test('HTTP multiplayer, isolation, CSRF, competing moves, reconnect, and durable
   async function stop() { if (processPHP.exitCode === null) { processPHP.kill(); await new Promise(r => processPHP.once('exit', r)); } }
   t.after(async () => { await stop(); await rm(data, { recursive: true, force: true }); });
   await start();
-  for (const file of ['app.js', 'board-state.js', 'tutorial.js', 'ui/gameplay.js', 'ui/waiting-room.js', 'ui/panels/chat.js', 'ui/profile.js', 'ui/avatars.js']) {
+  for (const file of ['app.js', 'board-state.js', 'tutorial.js', 'ui/gameplay.js', 'ui/waiting-room.js', 'ui/panels/chat.js', 'ui/profile.js', 'ui/avatars.js', 'ui/account-pages.js']) {
     const module = await fetch(`${base}/${file}`); assert.equal(module.status, 200, `${file} must be served by the PHP router`);
     assert.match(module.headers.get('content-type'), /javascript/);
     // Drain and verify full source; leaving a large response unread can pause
@@ -206,4 +206,38 @@ test('Existing guest deployment upgrades with a private backup and can save its 
   assert.equal(resumed.players[0].name, 'Saved Player'); assert.equal(resumed.account.points, 10000);
   await fetch(`${base}/api/session`, { headers: { Cookie: cookie } });
   assert.equal((await readdir(data)).filter(name => name.includes('.backup.json')).length, 1);
+});
+
+
+test('Account settings routes preserve identity and store private idempotent feedback', async t => {
+  const data = await mkdtemp(join(tmpdir(), 'mr-settings-http-'));
+  const port = await availablePort(), base = `http://127.0.0.1:${port}`;
+  const php = spawn(process.env.PHP_BIN || 'php', ['-S', `127.0.0.1:${port}`, '-t', 'public', 'public/router.php'], {env:{...process.env,RUMMY_DEV:'1',RUMMY_TEST_DATA_DIR:data},stdio:['ignore','ignore','ignore']});
+  t.after(async()=>{if(php.exitCode===null){php.kill();await new Promise(r=>php.once('exit',r));}await rm(data,{recursive:true,force:true});});
+  for(let i=0;i<80;i++){try{const ready=await fetch(base);await ready.text();break;}catch{await delay(50);}}
+  let cookie='', csrf='';
+  const call=async(route,input,override={})=>{
+    const response=await fetch(`${base}/api/${route}`,{method:input===undefined?'GET':'POST',headers:{Cookie:cookie,...(input===undefined?{}:{'Content-Type':'application/json','X-CSRF-Token':csrf,Origin:base}),...override},body:input===undefined?undefined:JSON.stringify(input)});
+    if(response.headers.get('set-cookie'))cookie=response.headers.get('set-cookie').split(';')[0];
+    const body=await response.json();if(body.csrf)csrf=body.csrf;return {status:response.status,body};
+  };
+  await call('session');
+  assert.equal((await call('feedback',{id:'a'.repeat(32),category:'idea',message:'Idea'})).status,401);
+  const registered=await call('register',{username:'original_name',name:'Player',password:'test-password-long'});
+  const identity=registered.body.id;
+  assert.equal((await call('username',{username:'updated_name',currentPassword:'wrong-password'})).status,400);
+  const updated=await call('username',{username:'updated_name',currentPassword:'test-password-long'});
+  assert.equal(updated.status,200);assert.equal(updated.body.id,identity);assert.equal(updated.body.points,10000);
+  const input={id:'a'.repeat(32),category:'idea',message:'<script>alert(1)</script>'};
+  assert.equal((await call('feedback',input,{'X-CSRF-Token':'bad'})).status,403);
+  const saved=await call('feedback',input);assert.equal(saved.status,200);
+  assert.deepEqual((await call('feedback',input)).body,saved.body);
+  assert.deepEqual((await call(`feedback?id=${input.id}`)).body,saved.body);
+  const state=JSON.parse(await readFile(join(data,'state.json'),'utf8'));assert.equal(Object.keys(state.feedback).length,1);
+  assert.ok(!JSON.stringify(state.feedback).includes('test-password-long'));
+  await call('logout',{logout:true});
+  assert.equal((await call(`feedback?id=${input.id}`)).status,401);
+  assert.equal((await call('login',{username:'original_name',password:'test-password-long'})).status,400);
+  assert.equal((await call('login',{username:'updated_name',password:'test-password-long'})).status,200);
+  assert.deepEqual((await call(`feedback?id=${input.id}`)).body,saved.body);
 });

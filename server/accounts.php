@@ -68,6 +68,18 @@ function rummy_set_avatar(array &$store, string $id, mixed $avatar): void {
     rummy_require(is_int($avatar) && $avatar >= 1 && $avatar <= 5, 'Choose one of the available avatars.');
     $store['users'][$id]['avatar'] = $avatar;
 }
+/** Keep the account ID, sessions and public player name stable when renaming. */
+function rummy_change_username(array &$store, string $id, mixed $username, mixed $password): void {
+    rummy_require(isset($store['users'][$id]), 'Sign in to change your username.');
+    $username = rummy_username($username);
+    $old = $store['users'][$id]['username'];
+    rummy_require(rummy_verify_login($store, $old, $password) === $id, 'Incorrect current password.');
+    rummy_require(!isset($store['usernames'][$username]) || $store['usernames'][$username] === $id, 'That username is taken. Choose another.');
+    if ($username === $old) return;
+    unset($store['usernames'][$old]);
+    $store['usernames'][$username] = $id;
+    $store['users'][$id]['username'] = $username;
+}
 function rummy_profile(array $store, string $id, int $offset = 0, string $filter = 'all'): ?array {
     if (!isset($store['users'][$id])) return null;
     rummy_require(in_array($filter, ['all', 'win', 'loss', 'signup'], true), 'Choose a valid history filter.');

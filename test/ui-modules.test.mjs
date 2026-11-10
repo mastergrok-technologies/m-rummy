@@ -234,3 +234,21 @@ test('profile history escapes saved match details and keeps filtered pagination'
   assert.match(html, /data-history-filter="win" aria-current="page"/);
   assert.match(html, /21–21 of 21/);
 });
+
+test('username page escapes current handle and requires a fresh current password', async () => {
+  const { accountPageMarkup } = await import('../public/ui/account-pages.js');
+  const html = accountPageMarkup('username', { username:'<bad>' }, esc);
+  assert.match(html, /&lt;bad>/); assert.doesNotMatch(html, /<bad>/);
+  assert.match(html, /type="password" autocomplete="current-password"/);
+  assert.doesNotMatch(html, /name="currentPassword"[^>]*value=/);
+  assert.match(html, /Save username/);
+});
+
+test('suggestion and receipt views escape draft/result text and expose actual server receipt', async () => {
+  const { accountPageMarkup } = await import('../public/ui/account-pages.js');
+  const form = accountPageMarkup('feedback', {draft:{message:'<script>',category:'idea'},lastId:'receipt'}, esc);
+  assert.match(form, /&lt;script>/); assert.match(form, /maxlength="1000"/); assert.match(form, /View last submission/);
+  const html = accountPageMarkup('feedback-receipt', {receipt:{id:'abc',message:'<script>alert(1)</script>',category:'idea',time:0}}, esc);
+  assert.match(html, /Reference/); assert.match(html, /Your suggestion is saved/);
+  assert.doesNotMatch(html, /<script\b/); assert.match(html, /for the host to review/);
+});
