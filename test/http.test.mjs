@@ -29,7 +29,7 @@ test('HTTP multiplayer, isolation, CSRF, competing moves, reconnect, and durable
   async function stop() { if (processPHP.exitCode === null) { processPHP.kill(); await new Promise(r => processPHP.once('exit', r)); } }
   t.after(async () => { await stop(); await rm(data, { recursive: true, force: true }); });
   await start();
-  for (const file of ['app.js', 'board-state.js', 'tutorial.js', 'ui/gameplay.js', 'ui/waiting-room.js', 'ui/panels/chat.js', 'ui/profile.js', 'ui/avatars.js', 'ui/account-pages.js']) {
+  for (const file of ['app.js', 'board-state.js', 'tutorial.js', 'ui/gameplay.js', 'ui/waiting-room.js', 'ui/panels/chat.js', 'ui/profile.js', 'ui/avatars.js', 'ui/account-pages.js', 'ui/round-results.js']) {
     const module = await fetch(`${base}/${file}`); assert.equal(module.status, 200, `${file} must be served by the PHP router`);
     assert.match(module.headers.get('content-type'), /javascript/);
     // Drain and verify full source; leaving a large response unread can pause
@@ -133,6 +133,7 @@ test('HTTP multiplayer, isolation, CSRF, competing moves, reconnect, and durable
   assert.equal(friend.hand.length, 13); assert.ok(!friend.hand.some(c => discarded.body.hand.some(d => d.id === c.id)));
   const chat = await request(b, 'action', { code, action: 'chat', text: '<script>alert(1)</script>', version: friend.version }); assert.equal(chat.status, 200);
   assert.equal(chat.body.messages.at(-1).text, '<script>alert(1)</script>');
+  assert.equal(chat.body.messages.at(-1).playerId, b.id);
   // Escaping is exercised by the chat renderer/browser tests. The entry point
   // delegates markup to UI modules, which are verified as served above.
   // Path and private-storage access cannot serve files.

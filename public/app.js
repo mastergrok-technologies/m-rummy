@@ -1,6 +1,6 @@
 import { accountPageMarkup } from './ui/account-pages.js';
 import { avatarSource } from './ui/avatars.js';
-import { homeMarkup, homeTablesMarkup } from './ui/home.js';
+import { homeMarkup, homeTablesMarkup, homeAttentionMarkup } from './ui/home.js';
 import { lastDealPanelMarkup } from './ui/panels/last-deal.js';
 import { bestDeclarationPanelMarkup, declarationPanelMarkup } from './ui/panels/declaration.js';
 import { standingsPanelMarkup } from './ui/panels/standings.js';
@@ -14,15 +14,15 @@ import { profileMarkup } from './ui/profile.js';
 import { accountFormMarkup } from './ui/account.js';
 import { joinedTablesMarkup, tablePickerMarkup } from './ui/tables.js';
 import { tutorialSteps } from './tutorial.js';
-import { remainingSeconds, reconcileGroups, tableStandings, presencePresentation, handIdentity, arrangementSnapshot, gameplayGuidance } from './board-state.js';
+import { remainingSeconds, reconcileGroups, tableStandings, presencePresentation, handIdentity, arrangementSnapshot, gameplayGuidance, recentChatState } from './board-state.js';
 const app = document.querySelector('#app');
 const suits = { S: '♠', H: '♥', D: '♦', C: '♣', J: '✦' };
 const ranks = { 0: 'JK', 1: 'A', 11: 'J', 12: 'Q', 13: 'K' };
 let session, state, busy = false, polling = false, failures = 0, mode = 'create', groups = [], selected = new Set(), chatDraft = '', clockOffset = 0;
 let lastCode = '', confirmAction, arrangementUndo = null;
 let connection = 'connected';
-let tables = [], tableLimit = 3, tableEpoch = 0, homeTab = 'points', pendingHomeInvite = '';
-const tableUi = new Map(), turnWarnings = new Map();
+let tables = [], tableLimit = 3, tableEpoch = 0, homeTab = 'points', homeFilter = 'all', pendingHomeInvite = '';
+const tableUi = new Map(), turnWarnings = new Map(), chatAttention = new Map();
 const presenceClient = [...crypto.getRandomValues(new Uint8Array(16))].map(n => n.toString(16).padStart(2, '0')).join('');
 let presenceSequence = 0;
 let openGamePanel = null, declarationError = '', chatComposerMode = 'replies';
@@ -87,6 +87,7 @@ function accept(next) {
     arrangementUndo = saved?.round === next.round && saved.handKey === handIdentity(next.hand) ? saved.undo : null;
   }
   else if (!sameHand) arrangementUndo = null;
+  chatAttention.set(next.code, recentChatState(chatAttention.get(next.code), next.messages, next.me, state?.code === next.code && chatIsRead()));
   state = next; rememberTable(next); clockOffset = next.serverTime - Date.now();
   setAccount(next.account || null);
   selected = new Set([...selected].filter(id => next.hand.some(c => c.id === id)));
@@ -124,13 +125,19 @@ function showHome(tab = homeTab) {
   state = null; selected.clear(); groups = []; chatDraft = ''; homeTab = tab;
   document.querySelector('#game-dialog').close();
   history.replaceState({}, '', '/'); app.className = 'home-page';
-  app.innerHTML = homeMarkup(account, tables, tableLimit, homeTab, esc, number) + connectionNotice();
+  app.innerHTML = homeMarkup(account, tables, tableLimit, homeTab, esc, number, homeFilter) + connectionNotice();
   refreshHomeTables(); syncControls();
 }
 function refreshHomeTables() {
   const root = document.querySelector('#home-table-list');
   if (!root) return;
-  const markup = homeTablesMarkup(tables, esc);
+  const markup = homeTablesMarkup(tables, esc, homeTab === 'joined' ? homeFilter : 'all');
+  const attention = document.querySelector('#home-turn-attention');
+  if (attention) {
+    const html = homeAttentionMarkup(tables, esc);
+    if (attention.innerHTML !== html) attention.innerHTML = html;
+  }
+  for (const button of document.querySelectorAll('.home-filters [data-home-filter]')) button.setAttribute('aria-current', button.dataset.homeFilter === homeFilter ? 'page' : 'false');
   if (root.dataset.markup !== markup) {
     const focusedCode = document.activeElement?.dataset.switchTable;
     root.innerHTML = markup; root.dataset.markup = markup;
@@ -235,7 +242,7 @@ function updateConnectionNotice() {
 }
 function roomChrome() {
   return `<div class="room-heading"><div><div class="eyebrow">YOUR PRIVATE CLUB <span class="connection" id="connection" tabindex="-1">● Connected</span></div><h1>The friends’ table<span class="round-badge">${state.round ? `Round ${state.round}` : 'Waiting room'}</span></h1></div><div class="button-row"><button class="button secondary small" data-action="invite">Invite friends <span>↗</span></button><button class="icon-button leave-button" data-action="leave" aria-label="Leave table" title="Leave table">${state.status === 'lobby' ? '<img src="/assets/figma/arrow-left.svg" alt="" width="24" height="24">' : '⇥'}</button></div></div>
-  <div id="table-switcher"></div><nav class="board-toolbar" aria-label="Table tools"><button type="button" class="button secondary small" data-home>Home</button><button class="button secondary small" data-action="tutorial">Learn rummy</button><button class="button secondary small" data-panel="chat">Chat</button><button class="button secondary small" data-panel="hand" ${!state.hand.length ? 'disabled' : ''}>View cards</button><button class="button secondary small" data-panel="standings">Standings</button><button class="button secondary small" data-panel="information">Table info</button><button class="button secondary small" data-panel="settings">Settings</button></nav>
+  <div id="table-switcher"></div><nav class="board-toolbar" aria-label="Table tools"><button type="button" class="button secondary small" data-home>Home</button><button class="button secondary small" data-action="tutorial">Learn rummy</button><button class="button secondary small" data-panel="chat" aria-label="Chat" aria-describedby="chat-unread-description">Chat <span id="chat-unread-count" class="chat-unread-count" aria-hidden="true" hidden></span></button><span id="chat-unread-description" class="sr-only" role="status" aria-live="polite"></span><button class="button secondary small" data-panel="hand" ${!state.hand.length ? 'disabled' : ''}>View cards</button><button class="button secondary small" data-panel="standings">Standings</button><button class="button secondary small" data-panel="information">Table info</button><button class="button secondary small" data-panel="settings">Settings</button></nav>
   ${connectionNotice()}<div id="command-status" class="sr-only" role="status"></div>
 `;
 }
@@ -244,34 +251,77 @@ function seatAvatar(player) {
   const i = state.players.findIndex(p => p.id === player.id);
   return player.bot ? '<span aria-hidden="true">✦</span>' : `<img data-avatar-player="${esc(player.id)}" src="${avatarSource(player.avatar) || `/assets/figma/avatar-${i + 1}.${[1, 2, 3].includes(i) ? 'svg' : 'png'}`}" alt="" width="96" height="96">`;
 }
+function sidebarChatPosition() {
+  const messages = document.querySelector('#messages');
+  return messages ? { code: messages.dataset.table, top: messages.scrollTop, follow: messages.scrollHeight - messages.clientHeight - messages.scrollTop <= 24 } : null;
+}
+function restoreSidebarChat(position) {
+  const messages = document.querySelector('#messages'); if (!messages) return;
+  messages.dataset.table = state.code;
+  messages.scrollTop = position?.code === state.code && !position.follow ? position.top : messages.scrollHeight;
+}
+function chatIsRead() {
+  if (document.hidden) return false;
+  const dialog = document.querySelector('#game-dialog');
+  const inChat = dialog.open && openGamePanel === 'chat';
+  if (!inChat && document.querySelector('dialog[open]')) return false;
+  const messages = document.querySelector(inChat ? '#dialog-messages' : '#messages');
+  if (!messages || messages.scrollHeight - messages.clientHeight - messages.scrollTop > 24) return false;
+  const box = messages.getBoundingClientRect();
+  return inChat || (box.top >= 0 && box.bottom <= innerHeight && box.left >= 0 && box.right <= innerWidth);
+}
+function markChatRead() {
+  const entry = state && chatAttention.get(state.code); if (entry) entry.unread = [];
+}
+function syncChatIndicators() {
+  if (!state) return;
+  if (chatIsRead()) markChatRead();
+  const count = chatAttention.get(state.code)?.unread.length || 0;
+  const badge = document.querySelector('#chat-unread-count');
+  if (badge) { badge.hidden = count === 0; badge.textContent = String(count); }
+  const description = document.querySelector('#chat-unread-description'), text = count ? `${count} new messages at this table.` : 'No new messages at this table.';
+  if (description && description.textContent !== text) description.textContent = text;
+  for (const [listId,buttonId] of [['messages','sidebar-chat-latest'],['dialog-messages','dialog-chat-latest']]) {
+    const list = document.getElementById(listId), button = document.getElementById(buttonId);
+    if (!list || !button) continue;
+    button.hidden = list.scrollHeight - list.clientHeight - list.scrollTop <= 24;
+    button.textContent = count ? `Latest messages (${count} new) ↓` : 'Latest messages ↓';
+  }
+}
+document.addEventListener('scroll', event => {
+  if (['messages','dialog-messages'].includes(event.target.id)) syncChatIndicators();
+}, true);
 function renderWaitingRoom() {
   const focused = document.activeElement;
   const focusKey = focused?.dataset.remove || focused?.dataset.action;
-  const cursor = focused?.selectionStart;
+  const cursor = focused?.selectionStart, cursorEnd = focused?.selectionEnd, chatPosition = sidebarChatPosition(), pageY = scrollY;
   app.className = 'room-page waiting-page';
   app.innerHTML = waitingRoomMarkup(state, chatDraft, roomChrome(), esc, seatAvatar);
-  const messageBox = document.querySelector('#messages'); messageBox.scrollTop = messageBox.scrollHeight;
-  if (focused?.id === 'chat-input') { const input = document.querySelector('#chat-input'); input.focus(); input.setSelectionRange(cursor, cursor); }
+  restoreSidebarChat(chatPosition);
+  if (focused?.id === 'chat-input') { const input = document.querySelector('#chat-input'); input.focus({preventScroll:true}); input.setSelectionRange(cursor, cursorEnd ?? cursor); }
+  else if (focused?.id === 'messages') document.querySelector('#messages').focus({preventScroll:true});
   else if (focusKey) [...app.querySelectorAll('[data-remove], [data-action]')].find(el => (el.dataset.remove || el.dataset.action) === focusKey && !el.disabled)?.focus();
+  if (chatPosition?.code === state.code && ['messages','chat-input'].includes(focused?.id)) window.scrollTo(0,pageY);
   renderTableSwitcher(); syncControls(true);
 }
 function renderRoom() {
   if (state.status === 'lobby') { renderWaitingRoom(); return; }
   const focused = document.activeElement;
   const focus = focused?.id, focusedCard = focused?.dataset.card, focusedAction = focused?.dataset.action;
-  const selectionStart = focused?.selectionStart;
+  const selectionStart = focused?.selectionStart, selectionEnd = focused?.selectionEnd;
   const sameView = app.dataset.gameView === `${state.code}:${state.round}`;
   const handScroll = sameView ? document.querySelector('.hand-scroll')?.scrollLeft || 0 : 0;
   const pageY = window.scrollY, focusInApp = app.contains(focused);
   const handFocused = focused?.classList.contains('hand-scroll');
+  const chatPosition = sidebarChatPosition();
   app.className = `room-page ${state.status === 'playing' ? 'gameplay-page' : ''}`;
   app.innerHTML = gameplayMarkup(state, groups, selected, chatDraft, roomChrome(), { esc, number, card, seatAvatar, turnText, ranks, canUndo: !!arrangementUndo });
-  const messageBox = document.querySelector('#messages'); if (messageBox) messageBox.scrollTop = messageBox.scrollHeight;
+  restoreSidebarChat(chatPosition);
   app.dataset.gameView = `${state.code}:${state.round}`;
   if (sameView && focusInApp) {
     const target = focusedCard ? app.querySelector(`[data-card="${CSS.escape(focusedCard)}"]`) : focusedAction ? app.querySelector(`[data-action="${CSS.escape(focusedAction)}"]`) : handFocused ? app.querySelector('.hand-scroll') : focus ? document.getElementById(focus) : null;
     (target && !target.disabled ? target : document.querySelector('#player-hand-title'))?.focus({ preventScroll: true });
-    if (focus === 'chat-input') document.querySelector('#chat-input').setSelectionRange(selectionStart, selectionStart);
+    if (focus === 'chat-input') document.querySelector('#chat-input').setSelectionRange(selectionStart, selectionEnd ?? selectionStart);
     window.scrollTo(0, pageY);
   }
   const hand = document.querySelector('.hand-scroll'); if (hand) hand.scrollLeft = handScroll;
@@ -321,6 +371,11 @@ function renderTableSwitcher() {
   updateTableClocks();
 }
 function updateTableClocks() {
+  for (const progress of document.querySelectorAll('[data-table-progress]')) {
+    const table = tables.find(t => t.code === progress.dataset.tableProgress);
+    progress.hidden = !table || table.status !== 'playing' || !table.yourTurn;
+    if (table) progress.value = Math.min(60, remainingSeconds(table.deadline, clockOffset));
+  }
   for (const label of document.querySelectorAll('[data-table-clock]')) {
     const table = tables.find(t => t.code === label.dataset.tableClock);
     if (!table) continue;
@@ -330,6 +385,7 @@ function updateTableClocks() {
 function acceptTableList(result) {
   tables = result.tables; tableLimit = result.tableLimit; clockOffset = result.serverTime - Date.now();
   for (const code of turnWarnings.keys()) if (!tables.some(table => table.code === code)) turnWarnings.delete(code);
+  for (const code of chatAttention.keys()) if (!tables.some(table => table.code === code)) chatAttention.delete(code);
   renderTableSwitcher(); refreshHomeTables();
 }
 function tablePicker() {
@@ -389,7 +445,7 @@ function showGamePanel(panel, fromSettings = false) {
     const heading = document.querySelector('#game-panel-title'); heading.tabIndex = -1; heading.focus();
   }
   if (!dialog.open) dialog.showModal();
-  if (panel === 'chat') { const messages = document.querySelector('#dialog-messages'); messages.scrollTop = messages.scrollHeight; }
+  if (panel === 'chat') { const messages = document.querySelector('#dialog-messages'); messages.scrollTop = messages.scrollHeight; markChatRead(); syncChatIndicators(); }
 }
 function renderGamePanel() {
   if (!openGamePanel || !state) return;
@@ -415,7 +471,7 @@ function renderGamePanel() {
   dialog.querySelector('.dialog-head [data-close]').innerHTML = ['information', 'standings'].includes(openGamePanel) ? '<img src="/assets/figma/info-close.svg" alt="">' : ['chat', 'settings', 'lastDeal'].includes(openGamePanel) ? '<img src="/assets/figma/chat-back.svg" alt="">' : '×';
   document.querySelector('#game-panel-title').textContent = titles[openGamePanel];
   if (openGamePanel === 'chat') {
-    content.innerHTML = chatPanelMarkup(state, chatDraft, chatComposerMode, busy, connection, { esc, chatEmojis, chatReplies });
+    content.innerHTML = chatPanelMarkup(state, chatDraft, chatComposerMode, busy, connection, { esc, chatEmojis, chatReplies, unreadCount: chatAttention.get(state.code)?.unread.length || 0 });
     const messages = content.querySelector('.messages');
     messages.scrollTop = nearBottom ? messages.scrollHeight : scroll;
   } else if (openGamePanel === 'hand') {
@@ -438,7 +494,7 @@ function renderGamePanel() {
   if (focused === 'dialog-chat-input') {
     const input = content.querySelector('#dialog-chat-input');
     input?.focus({ preventScroll: true }); input?.setSelectionRange(cursor, cursorEnd ?? cursor);
-  } else if (openGamePanel === 'chat' && focused && (focused.startsWith('chat-') || focused === 'dialog-chat-send' || focused === 'dialog-messages')) {
+  } else if (openGamePanel === 'chat' && focused && (focused.startsWith('chat-') || focused === 'dialog-chat-send' || focused === 'dialog-messages' || focused === 'dialog-chat-latest')) {
     document.getElementById(focused)?.focus({ preventScroll: true });
   } else if (openGamePanel === 'hand') {
     dialog.scrollTop = panelScroll;
@@ -447,6 +503,7 @@ function renderGamePanel() {
     const control = document.getElementById(focused) || dialog.querySelector('[data-close]');
     control?.focus({ preventScroll: true });
   }
+  syncChatIndicators();
 }
 function updatePresence() {
   if (!state) return;
@@ -470,9 +527,9 @@ function updatePresence() {
   }
 }
 function syncControls(fresh = false) {
-  updateConnectionNotice(); syncProfileControls(); syncAccountPageControls();
-  for (const button of document.querySelectorAll('[data-switch-table], [data-add-table], [data-home-entry], #table-entry-form button[type="submit"]')) button.disabled = busy || connection !== 'connected' || ((button.hasAttribute('data-add-table') || button.hasAttribute('data-home-entry')) && tables.length >= tableLimit);
-  for (const button of document.querySelectorAll('[data-home], [data-home-tab]')) button.disabled = busy;
+  updateConnectionNotice(); syncProfileControls(); syncAccountPageControls(); syncChatIndicators();
+  for (const button of document.querySelectorAll('[data-switch-table], [data-attention-table], [data-add-table], [data-home-entry], #table-entry-form button[type="submit"]')) button.disabled = busy || connection !== 'connected' || ((button.hasAttribute('data-add-table') || button.hasAttribute('data-home-entry')) && tables.length >= tableLimit);
+  for (const button of document.querySelectorAll('[data-home], [data-results-home], [data-home-tab], [data-home-filter]')) button.disabled = busy;
   if (!state) {
     if (pendingHomeInvite && !busy && connection === 'connected') {
       const invite = pendingHomeInvite; pendingHomeInvite = '';
@@ -536,9 +593,9 @@ async function action(actionName, extra = {}) {
       toast(result.valid && state.hand.length === 13 ? 'Your 13 cards form a valid declaration.' : 'Grouped your hand. After drawing, select a final discard to declare.');
     } else if (result.left) {
       const departed = state.code; state = null; arrangementUndo = null;
-      tableUi.delete(departed); tables = tables.filter(t => t.code !== departed); tablePicker();
+      tableUi.delete(departed); chatAttention.delete(departed); tables = tables.filter(t => t.code !== departed); tablePicker();
     }
-    else { if (['discard', 'declare'].includes(actionName)) selected.clear(); accept(result); saveGroups(); }
+    else { if (['discard', 'declare'].includes(actionName)) selected.clear(); accept(result); if (actionName === 'chat') { markChatRead(); syncChatIndicators(); } saveGroups(); }
     return true;
   } catch (e) {
     if (!e.status || e.status >= 500) setConnection('reconnecting');
@@ -585,6 +642,7 @@ app.addEventListener('click', async event => {
     }
     case 'rules': document.querySelector('#rules-dialog').showModal(); break;
     case 'tutorial': showTutorial(); break;
+    case 'show-results': document.querySelector('.results')?.scrollIntoView({block:'start',behavior:'auto'}); document.querySelector('#round-results-title')?.focus({preventScroll:true}); break;
     case 'show-hand': document.querySelector('#player-hand-panel')?.scrollIntoView({ block: 'start', behavior: 'auto' }); document.querySelector('#player-hand-title')?.focus({ preventScroll: true }); break;
     case 'clear-selection': selected.clear(); renderRoom(); break;
     case 'undo-arrangement': {
@@ -695,7 +753,7 @@ app.addEventListener('submit', async event => {
     try {
       session = await request(authMode === 'register' ? '/api/register' : '/api/login', data);
       setAccount(session.account); lastCode = ''; state = null; selected.clear(); groups = [];
-      tables = []; tableUi.clear(); await restoreTables(); setConnection('connected');
+      tables = []; tableUi.clear(); chatAttention.clear(); await restoreTables(); setConnection('connected');
       toast(authMode === 'register' ? 'Welcome! 10,000 play points are saved to your profile.' : 'Welcome back. Your profile and points are restored.');
     } catch (e) { toast(e.message, true); button.disabled = false; button.textContent = text; }
     finally { authBusy = false; busy = false; syncControls(); }
@@ -726,6 +784,17 @@ function setTableEntryMode(mode) {
 }
 document.addEventListener('click', event => {
   const button = event.target.closest('button'); if (!button || button.disabled) return;
+  if (button.dataset.homeFilter && !busy) {
+    if (!['all','your-turn','lobby','finished'].includes(button.dataset.homeFilter)) return;
+    homeFilter = button.dataset.homeFilter; refreshHomeTables(); syncControls(); document.querySelector(`[data-home-filter="${homeFilter}"]`)?.focus(); return;
+  }
+  if (button.hasAttribute('data-review-round')) { showGamePanel('standings'); return; }
+  if (button.dataset.attentionTable) { switchTable(button.dataset.attentionTable); return; }
+  if (button.hasAttribute('data-chat-latest')) {
+    const messages = document.querySelector(openGamePanel === 'chat' ? '#dialog-messages' : '#messages');
+    if (messages) { messages.scrollTop = messages.scrollHeight; messages.focus({preventScroll:true}); markChatRead(); syncChatIndicators(); }
+    return;
+  }
   if (button.dataset.accountView) { showAccountPage(button.dataset.accountView); return; }
   if (button.hasAttribute('data-account-back')) {
     if (!busy) { document.querySelector('#account-pages-dialog').close(); loadProfile(); }
@@ -734,7 +803,7 @@ document.addEventListener('click', event => {
   if (button.hasAttribute('data-feedback-new')) { if (!busy) { feedbackDraft = { category: 'idea', message: '', id: null }; showAccountPage('feedback'); } return; }
   if (button.hasAttribute('data-feedback-last')) { loadFeedbackReceipt(); return; }
   if (button.dataset.switchTable) { switchTable(button.dataset.switchTable); return; }
-  if (button.hasAttribute('data-home') && !busy) { showHome('joined'); return; }
+  if ((button.hasAttribute('data-home') || button.hasAttribute('data-results-home')) && !busy) { showHome('joined'); return; }
   if (button.dataset.homeTab && !busy) { showHome(button.dataset.homeTab); document.querySelector(`[data-home-tab="${homeTab}"]`).focus(); return; }
   if (button.hasAttribute('data-home-profile')) { loadProfile(); return; }
   if (button.dataset.homeEntry) { openTableEntry(button.dataset.homeEntry); return; }
@@ -783,7 +852,7 @@ document.querySelector('#profile-dialog').addEventListener('click', async event 
     tableEpoch++; busy = true; target.disabled = true;
     try {
       session = await request('/api/logout', { logout: true });
-      document.querySelector('#profile-dialog').close(); state = null; lastCode = ''; selected.clear(); groups = []; chatDraft = ''; tables = []; tableUi.clear();
+      document.querySelector('#profile-dialog').close(); state = null; lastCode = ''; selected.clear(); groups = []; chatDraft = ''; tables = []; tableUi.clear(); chatAttention.clear();
       feedbackDraft = { category: 'idea', message: '', id: null }; accountPageEpoch++;
       history.replaceState({}, '', '/'); setAccount(null); authMode = 'login'; landing(); toast('Signed out. Your points are saved.');
     } catch (e) { toast(e.message, true); target.disabled = false; }

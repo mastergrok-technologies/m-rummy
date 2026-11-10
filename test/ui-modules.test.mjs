@@ -269,3 +269,22 @@ test('gameplay guidance exposes selection recovery and blocks the just-picked op
   const waiting=gameplayMarkup(state,[],new Set(),'','',gameplayHelpers);
   assert.match(waiting,/&lt;script>alert/); assert.doesNotMatch(waiting,/<script\b/);
 });
+
+test('joined table filters prioritize turns while preserving stable table numbers',async()=>{
+  const {homeTablesMarkup,homeAttentionMarkup}=await import('../public/ui/home.js');
+  const tables=[{code:'WAIT',status:'lobby',playerCount:2},{code:'PLAY',status:'playing',yourTurn:true,playerCount:3}];
+  const all=homeTablesMarkup(tables,esc);assert.ok(all.indexOf('Table 2')<all.indexOf('Table 1'));
+  const waiting=homeTablesMarkup(tables,esc,'lobby');assert.match(waiting,/WAIT/);assert.doesNotMatch(waiting,/PLAY/);
+  assert.match(homeTablesMarkup(tables,esc,'finished'),/No tables match/);
+  assert.match(homeAttentionMarkup(tables,esc),/data-attention-table="PLAY"/);
+});
+
+test('round results show own settled outcome and guard next-round actions',async()=>{
+  const {roundResultsMarkup}=await import('../public/ui/round-results.js');
+  const state=gameplayState();state.result={winner:'me',winnerName:'<Winner>',reason:'last-player',groups:[],scores:[{id:'me',name:'Me',penalty:0,total:30}],pointsAward:{winner:'me',eligible:true,amount:100}};
+  assert.equal(roundResultsMarkup(state,gameplayHelpers),'');
+  state.status='finished';const html=roundResultsMarkup(state,gameplayHelpers);
+  assert.match(html,/Your round penalty/);assert.match(html,/Profile points earned/);assert.match(html,/&lt;Winner>/);assert.doesNotMatch(html,/<Winner>/);
+  state.players=[state.players[0]];assert.match(roundResultsMarkup(state,gameplayHelpers),/data-action="start" disabled/);
+  state.host='other';assert.doesNotMatch(roundResultsMarkup(state,gameplayHelpers),/data-action="start"/);
+});
