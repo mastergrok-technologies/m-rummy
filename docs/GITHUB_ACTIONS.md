@@ -1,10 +1,16 @@
 # Deploy automatically to Hostinger Premium with GitHub Actions
 
-The repository's **Check and test** workflow now tests, builds upload artifacts, and can deploy the exact tested `main` commit over SSH. Deployment is **off until you configure it**. No hosting credentials belong in source code or chat.
+The repository's **Check and package** workflow runs syntax checks, builds upload artifacts, and can deploy the exact checked `main` commit over SSH. Deployment is **off until you configure it**. No hosting credentials belong in source code or chat.
 
 Hostinger Premium supports SSH. Confirm your actual IP, username, port, and server-key fingerprints in hPanel → your website → **SSH Access**, and enable SSH there. Shared hosting commonly uses port **65002**; use the value hPanel shows.
 
 Official references: [Enable SSH](https://www.hostinger.com/support/1583645-how-to-enable-ssh-access-in-hostinger/), [Connect via SSH](https://www.hostinger.com/support/1583245-how-to-connect-to-a-hosting-plan-via-ssh-in-hostinger/), [GitHub Actions secrets](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets).
+
+## Fast workflow
+
+Automated test execution is removed from this workflow to reduce runtime. It no longer runs `npm test`, installs Playwright or Chromium, runs `npm run test:ui`, or uploads browser screenshots. Syntax checks, both release artifacts, deployment validation and the HTTPS API smoke check remain. The existing `test` job ID is retained so deployment dependencies and required check names stay compatible.
+
+Run `npm test` locally when needed. Browser regressions remain available through `npm run test:ui` after installing the pinned Playwright version and Chromium from the previous workflow setup.
 
 ## 1. Choose the dedicated PHP website directory
 
@@ -107,16 +113,16 @@ Keep `HOSTINGER_DEPLOY_ENABLED` as a **repository-level variable**, because it i
 
 1. Finish any active game rounds. Deployment refuses to replace code while a non-expired saved round is still playing.
 2. Set `HOSTINGER_DEPLOY_ENABLED=true`.
-3. Open [Actions → Check and test](https://github.com/mastergrok-technologies/m-rummy/actions/workflows/test.yml).
+3. Open [Actions → Check and package](https://github.com/mastergrok-technologies/m-rummy/actions/workflows/test.yml).
 4. Select **Run workflow**, choose branch **main**, and run it.
-5. Confirm the test job and **Deploy to Hostinger Premium** job both succeed.
+5. Confirm the `test` job (syntax checks and release packaging) and **Deploy to Hostinger Premium** job both succeed.
 6. Open your HTTPS website and test signup, two-player play, saved points, and mobile browsers.
 
-After setup, pushes to `main` automatically deploy after tests pass. Pull requests and other branches still run checks but never deploy. A manual run also tests first and deploys only `main`. The job refuses a stale commit if `main` has advanced, and deployments run one at a time without cancelling an in-progress install.
+After setup, pushes to `main` automatically deploy after syntax checks and release packaging pass. Pull requests and other branches still run checks but never deploy. A manual run also checks and packages first and deploys only `main`. The job refuses a stale commit if `main` has advanced, and deployments run one at a time without cancelling an in-progress install.
 
 ## What the deployment does
 
-1. Tests the application, account rewards, data upgrade, API, and deployment safety; builds a code-only release with per-file checksums and the tested commit SHA.
+1. Runs JavaScript/PHP/shell syntax checks and builds a code-only release with per-file checksums and the current commit SHA.
 2. Uses a temporary runner SSH key file, strict server-key verification, and encrypted SCP to upload into a private staging directory.
 3. Verifies release files, target paths, PHP CLI version, private data location, existing origin, and saved state. It takes exclusive deployment and state locks before changing code. New API requests get a retryable HTTP 503 during the short update.
 4. Saves a private snapshot of overwritten code, `server/config.php`, and `state.json` under `.rummy-backups/`. Existing private configuration and all accounts/points/game data are preserved. No remote-directory synchronization or broad delete touches them; untracked web files are not removed.
@@ -131,7 +137,7 @@ Backups are intentionally retained for manual recovery; monitor disk space and r
 
 | Failure | Action |
 | --- | --- |
-| Deploy job skipped | Set the repository variable `HOSTINGER_DEPLOY_ENABLED` to `true`, use `main`, and confirm tests passed. |
+| Deploy job skipped | Set the repository variable `HOSTINGER_DEPLOY_ENABLED` to `true`, use `main`, and confirm syntax checks and release packaging passed. |
 | Missing secret / key parse error | Check all four secret names and the full unencrypted private key, including newlines. |
 | Host key verification failed | Check the same host/IP and port against hPanel; update the verified known-hosts secret only after confirming the fingerprint. |
 | Permission denied (publickey) | Authorize the matching `.pub` key on the correct Hostinger account; confirm the username. |
