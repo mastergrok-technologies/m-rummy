@@ -213,3 +213,23 @@ test('home covers waiting, watching, completed and empty memberships', async () 
   const html = homeTablesMarkup([{code: 'A', status: 'lobby', playerCount: 2}, {code: 'B', status: 'playing', dropped: true, playerCount: 6}, {code: 'C', status: 'finished', playerCount: 3}], esc);
   for (const label of ['Waiting for players', 'Watching', 'Round complete']) assert.ok(html.includes(label));
 });
+
+test('profile avatars use a strict local asset allowlist', async () => {
+  const { avatarSource } = await import('../public/ui/avatars.js');
+  for (const bad of [null, 0, 6, '2', '../other', '<img>', 1.1]) assert.equal(avatarSource(bad), null);
+  assert.equal(avatarSource(3), '/assets/figma/avatar-3.svg');
+  const html = profileMarkup({name: 'Me', username: 'me', avatar: 3, points:10000, wins:0, roundsPlayed:0, history:[], historyTotal:0}, 0, esc, String);
+  assert.match(html, /value="3" checked/);
+  assert.match(html, /0–0 of 0/);
+  assert.match(html, /No activity in this category/);
+});
+
+test('profile history escapes saved match details and keeps filtered pagination', () => {
+  const html = profileMarkup({name:'Me',username:'me',points:10100,wins:1,roundsPlayed:2,historyFilter:'win',historyTotal:21,history:[{type:'win',round:2,room:'<room>',time:0,amount:100,balance:10100,opponents:1,match:{winner:'<winner>',penalty:0,totalPenalty:20,reason:'last-player'}}]}, 20, esc, String);
+  assert.match(html, /&lt;winner>/);
+  assert.match(html, /&lt;room>/);
+  assert.doesNotMatch(html, /<winner>|<room>/);
+  assert.match(html, /Last player standing/);
+  assert.match(html, /data-history-filter="win" aria-current="page"/);
+  assert.match(html, /21–21 of 21/);
+});

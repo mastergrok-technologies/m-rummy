@@ -42,3 +42,13 @@ Account passwords are hashed server-side using PHP's password hashing API with a
 The existing separate file lock and atomic temporary-file rename cover account changes, round settlement, and saved game state. The same round's immutable event IDs prevent duplicate rewards and stats on retries or polling. Rooms and sessions may expire, but accounts and point-event history are retained.
 
 Protect and back up the entire private `data/` directory, including `state.json`. It now contains password hashes, session credentials, and the authoritative points ledger as well as live hands. Keep it outside the document root; never publish it, upload it into `public_html`, or commit it to Git. Keep all migration backups private too. This remains a single-server friends-and-family app; large public deployments and multi-server state sharing need a database and additional account/abuse controls.
+
+## Account avatar and round details
+
+The profile now includes five bundled avatar choices, stored on the account and
+shown in the header and at joined tables. Save does not change game versions,
+timers, credentials or points. History filters show All activity, Wins, Other
+rounds or the Welcome bonus, with 20 entries per page. Expand a row for its facts.
+Newly settled human rounds retain your own penalty summary after room expiry;
+older rows explicitly identify unavailable details. See [ACCOUNT_UI.md](ACCOUNT_UI.md)
+for endpoint contracts, compatibility, privacy and reference-design limitations.

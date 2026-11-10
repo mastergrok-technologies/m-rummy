@@ -1103,3 +1103,73 @@ test('home respects the table cap and resynchronizes before actions after discon
   assert.equal(await page.locator('[data-home-entry="create"]').isDisabled(), true);
   assert.equal(await page.locator('.home-table').count(), 3);
 });
+
+async function accountFixture(t, viewport) {
+  const f = await fixture(t, viewport);
+  const profile = { ...f.room.account, id: 'me', username: 'me', avatar: null, wins: 21, roundsPlayed: 21, points: 12100 };
+  const events = Array.from({ length: 21 }, (_, i) => ({ id: `event-${i}`, type:'win', round:21-i, room:f.room.code, time:Date.now()-i*1000, amount:100, balance:12100-i*100, opponents:1, match:{winner:'Me',penalty:0,totalPenalty:20,reason:'last-player'} }));
+  let failSave = false;
+  await f.page.route('http://rummy.test/api/profile*', async route => {
+    if (route.request().method() === 'POST') {
+      if (failSave) { failSave = false; return route.fulfill({ status:400, json:{error:'Please try another avatar.'} }); }
+      profile.avatar = route.request().postDataJSON().avatar;
+      f.room.account = { ...profile }; f.room.players[0].avatar = profile.avatar;
+    }
+    const params = new URL(route.request().url()).searchParams;
+    const filter = params.get('filter') || 'all', offset = Number(params.get('offset') || 0);
+    const filtered = ['all','win'].includes(filter) ? events : [];
+    return route.fulfill({ json:{...profile, history:filtered.slice(offset,offset+20),historyTotal:filtered.length,historyAllTotal:events.length,historyFilter:filter,historyOffset:offset} });
+  });
+  return { ...f, profile, failSave: () => { failSave = true; } };
+}
+
+for (const viewport of [{width:390,height:844}, {width:768,height:1024}, {width:1920,height:1080}]) {
+  test(`account avatar and round history stay usable at ${viewport.width}px`, async t => {
+    const { page, profile, errors } = await accountFixture(t, viewport);
+    await page.locator('#profile-button').click();
+    await page.locator('.profile-identity').waitFor();
+    await page.locator('[data-history-filter="win"]').click();
+    await page.waitForFunction(() => document.querySelector('[data-history-filter="win"]').getAttribute('aria-current') === 'page');
+    await page.locator('[data-profile-page="older"]').click();
+    await page.waitForFunction(() => document.querySelector('.history-pages').textContent.includes('21–21'));
+    await page.locator('.profile-event summary').click();
+    assert.match(await page.locator('.profile-event-detail').innerText(), /Your round penalty/);
+    assert.equal(await page.locator('#profile-dialog [data-card]').count(), 0);
+    await page.getByText('Change avatar', {exact:true}).click();
+    await page.getByLabel('Avatar 3', {exact:true}).check();
+    await page.getByRole('button', {name:'Save avatar',exact:true}).click();
+    await page.waitForFunction(() => document.querySelector('#avatar-status').textContent.includes('saved to your account'));
+    assert.equal(profile.avatar, 3);
+    assert.match(await page.locator('.profile-portrait').getAttribute('src'), /avatar-3.svg$/);
+    assert.equal(await page.locator('[data-history-filter="win"]').getAttribute('aria-current'), 'page');
+    assert.match(await page.locator('.history-pages').innerText(), /21–21/);
+    assert.equal(await page.locator('#profile-dialog').evaluate(el => el.scrollWidth <= el.clientWidth + 1), true);
+    await page.locator('#profile-dialog img').evaluateAll(images => Promise.all(images.map(image => image.decode())));
+    await waitingScreenshot(page, `account-avatar-history-${viewport.width}`);
+    await page.locator('[data-history-filter="loss"]').click();
+    await page.getByText('No activity in this category yet. Your completed rounds will appear here.').waitFor();
+    assert.match(await page.locator('.history-pages').innerText(), /0–0 of 0/);
+    await page.locator('[data-close="profile-dialog"]').click();
+    assert.match(await page.locator('[data-avatar-player="me"]').first().getAttribute('src'), /avatar-3.svg$/);
+    await page.reload(); await page.locator('#connection').waitFor();
+    await page.locator('#profile-button').click();
+    await page.locator('.profile-identity').waitFor();
+    assert.match(await page.locator('.profile-portrait').getAttribute('src'), /avatar-3.svg$/);
+    assert.deepEqual(errors, []);
+  });
+}
+
+test('rejected avatar saves keep the selection and allow a deliberate retry', async t => {
+  const f = await accountFixture(t); const {page, profile} = f;
+  await page.locator('#profile-button').click(); await page.locator('.profile-identity').waitFor();
+  await page.getByText('Change avatar', {exact:true}).click();
+  await page.getByLabel('Avatar 4', {exact:true}).check();
+  f.failSave(); await page.getByRole('button', {name:'Save avatar',exact:true}).click();
+  await page.waitForFunction(() => document.querySelector('#avatar-status').textContent.includes('Could not confirm'));
+  assert.equal(profile.avatar, null);
+  assert.equal(await page.getByLabel('Avatar 4', {exact:true}).isChecked(), true);
+  assert.equal(await page.getByRole('button', {name:'Save avatar',exact:true}).isEnabled(), true);
+  await page.getByRole('button', {name:'Save avatar',exact:true}).click();
+  await page.waitForFunction(() => document.querySelector('#avatar-status').textContent.includes('saved to your account'));
+  assert.equal(profile.avatar, 4);
+});
