@@ -123,10 +123,11 @@ test('gameplay renderer shows completed round scores and rematch controls', () =
 
 
 test('chat panel renders private messages safely and keeps draft', () => {
-  const state = { code: 'ABC', players: [{ id: 'me' }], messages: [{ name: '<Alice>', text: '<script>', time: '2026-11-01T10:00:00Z' }] };
+  const state = { code: 'ABC', players: [{ id: 'me' }], messages: [{ name: '<Alice>', text: '<script>alert(1)</script>', time: '2026-11-01T10:00:00Z' }] };
   const html = chatPanelMarkup(state, 'hello', 'replies', false, 'connected', { esc, chatEmojis: [], chatReplies: ['Hi'] });
   assert.match(html, /&lt;Alice>/);
-  assert.match(html, /&lt;script>/);
+  assert.match(html, /&lt;script>alert\(1\)&lt;\/script>/);
+  assert.doesNotMatch(html, /<script\b/i);
   assert.match(html, /value="hello"/);
   assert.match(html, /Table message history/);
 });

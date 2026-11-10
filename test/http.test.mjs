@@ -29,12 +29,21 @@ test('HTTP multiplayer, isolation, CSRF, competing moves, reconnect, and durable
   async function stop() { if (processPHP.exitCode === null) { processPHP.kill(); await new Promise(r => processPHP.once('exit', r)); } }
   t.after(async () => { await stop(); await rm(data, { recursive: true, force: true }); });
   await start();
-  for (const file of ['app.js', 'board-state.js', 'tutorial.js']) {
+  for (const file of ['app.js', 'board-state.js', 'tutorial.js', 'ui/gameplay.js', 'ui/waiting-room.js', 'ui/panels/chat.js', 'ui/profile.js', 'ui/avatars.js']) {
     const module = await fetch(`${base}/${file}`); assert.equal(module.status, 200, `${file} must be served by the PHP router`);
     assert.match(module.headers.get('content-type'), /javascript/);
     // Drain and verify full source; leaving a large response unread can pause
     // Node's fetch parser while the PHP development server closes the socket.
     assert.equal(await module.text(), await readFile(`public/${file}`, 'utf8'));
+  }
+  for (const file of ['assets/figma/waiting-table.png', 'assets/figma/avatar-2.svg', 'assets/figma/home/pattern.png']) {
+    const asset = await fetch(`${base}/${file}`);
+    assert.equal(asset.status, 200, `${file} must be served`);
+    assert.match(asset.headers.get('content-type'), /^image\//);
+    assert.deepEqual(Buffer.from(await asset.arrayBuffer()), await readFile(`public/${file}`));
+  }
+  for (const path of ['/ui/missing.js', '/assets/figma/missing.svg', '/ui/profile.php', '/ui/%2e%2e/server/accounts.php']) {
+    assert.equal((await fetch(`${base}${path}`)).status, 404, `${path} must not be served`);
   }
   async function user() {
     const response = await fetch(`${base}/api/session`); const cookie = response.headers.get('set-cookie').split(';')[0];
@@ -124,7 +133,8 @@ test('HTTP multiplayer, isolation, CSRF, competing moves, reconnect, and durable
   assert.equal(friend.hand.length, 13); assert.ok(!friend.hand.some(c => discarded.body.hand.some(d => d.id === c.id)));
   const chat = await request(b, 'action', { code, action: 'chat', text: '<script>alert(1)</script>', version: friend.version }); assert.equal(chat.status, 200);
   assert.equal(chat.body.messages.at(-1).text, '<script>alert(1)</script>');
-  const source = await readFile('public/app.js', 'utf8'); assert.match(source, /esc\(m\.text\)/);
+  // Escaping is exercised by the chat renderer/browser tests. The entry point
+  // delegates markup to UI modules, which are verified as served above.
   // Path and private-storage access cannot serve files.
   assert.equal((await fetch(`${base}/server/config.php`)).status, 404);
   assert.equal((await fetch(`${base}/data/state.json`)).status, 404);
