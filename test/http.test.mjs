@@ -29,7 +29,7 @@ test('HTTP multiplayer, isolation, CSRF, competing moves, reconnect, and durable
   async function stop() { if (processPHP.exitCode === null) { processPHP.kill(); await new Promise(r => processPHP.once('exit', r)); } }
   t.after(async () => { await stop(); await rm(data, { recursive: true, force: true }); });
   await start();
-  for (const file of ['app.js', 'board-state.js', 'tutorial.js', 'ui/gameplay.js', 'ui/waiting-room.js', 'ui/panels/chat.js', 'ui/profile.js', 'ui/avatars.js', 'ui/account-pages.js', 'ui/round-results.js']) {
+  for (const file of ['app.js', 'board-state.js', 'tutorial.js', 'ui/gameplay.js', 'ui/waiting-room.js', 'ui/panels/chat.js', 'ui/profile.js', 'ui/avatars.js', 'ui/account-pages.js', 'ui/round-results.js', 'ui/tutorial.js']) {
     const module = await fetch(`${base}/${file}`); assert.equal(module.status, 200, `${file} must be served by the PHP router`);
     assert.match(module.headers.get('content-type'), /javascript/);
     // Drain and verify full source; leaving a large response unread can pause

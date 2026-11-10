@@ -288,3 +288,47 @@ test('round results show own settled outcome and guard next-round actions',async
   state.players=[state.players[0]];assert.match(roundResultsMarkup(state,gameplayHelpers),/data-action="start" disabled/);
   state.host='other';assert.doesNotMatch(roundResultsMarkup(state,gameplayHelpers),/data-action="start"/);
 });
+
+test('tutorial topics cover all steps and practice feedback stays independent of live cards', async () => {
+  const {tutorialTopicsMarkup,tutorialPracticeMarkup}=await import('../public/ui/tutorial.js');
+  const {tutorialSteps,tutorialQuestions}=await import('../public/tutorial.js');
+  assert.equal(tutorialQuestions.length,tutorialSteps.length);
+  for (let i=0;i<tutorialSteps.length;i++) {
+    const topics=tutorialTopicsMarkup(i,esc);
+    assert.equal((topics.match(/aria-current="step"/g)||[]).length,1);
+    assert.match(topics,new RegExp(`data-tutorial-topic="${i}" aria-current="step"`));
+    assert.match(tutorialPracticeMarkup(i,undefined,esc),/Choose an answer/);
+    assert.match(tutorialPracticeMarkup(i,tutorialQuestions[i].correct,esc),/Correct\./);
+    assert.match(tutorialPracticeMarkup(i,1-tutorialQuestions[i].correct,esc),/Try another answer/);
+    assert.doesNotMatch(tutorialPracticeMarkup(i,0,esc),/data-card=|data-action=|data-panel-action=/);
+  }
+});
+
+test('declaration recovery follows turn, drop and round transitions without validating groups',async()=>{
+  const {declarationStatus}=await import('../public/ui/panels/declaration.js');
+  const state={status:'playing',phase:'draw',me:'me',turn:'me',hand:Array.from({length:13},(_,i)=>({id:`c${i}`,rank:2,suit:'H'})),players:[{id:'me',name:'Me'},{id:'other',name:'<Friend>'}]};
+  assert.match(declarationStatus(state),/Draw one card/);
+  state.phase='discard';state.hand.push({id:'drawn',rank:3,suit:'S'});state.drawnOpen='drawn';
+  assert.match(declarationStatus(state,new Set(['drawn'])),/different discard/);
+  assert.match(declarationStatus(state,new Set(['c0'])),/Selected:/);
+  state.turn='other';assert.match(declarationStatus(state),/another player/);
+  state.players[0].dropped=true;assert.match(declarationStatus(state),/watching/);
+  state.status='finished';assert.match(declarationStatus(state),/not active/);
+  assert.match(declarationStatus(state,new Set(),false,'reconnecting'),/fresh snapshot/);
+  assert.match(declarationStatus(state,new Set(),true),/confirm/);
+  assert.match(bestDeclarationPanelMarkup(false,'connected',state),/data-panel-action="arrange" disabled/);
+  const html=declarationPanelMarkup('<bad>',false,'connected',esc,state);
+  assert.doesNotMatch(html,/Your turn is still active/);assert.match(html,/&lt;bad>/);assert.match(html,/data-declaration-review/);
+});
+
+test('last-deal browsing exposes only recorded history and keeps historical totals explicit',()=>{
+  const history=[{round:3,winner:'<Alice>',scores:[{name:'Same',penalty:0,total:80},{name:'Same',penalty:20,total:40}]},{round:2,winner:'Bob',scores:[{name:'Bob',penalty:0,total:20}]}];
+  const html=lastDealPanelMarkup(history[1],{esc,number:String},history);
+  assert.match(html,/value="2" selected/);assert.match(html,/1 newer completed round is available/);
+  assert.match(html,/id="last-deal-older" data-deal-round="" disabled/);
+  assert.match(html,/id="last-deal-newer" data-deal-round="3"/);
+  assert.match(html,/Totals reflect that point in time/);assert.doesNotMatch(html,/data-card|You<|winner-row/);
+  const latest=lastDealPanelMarkup(history[0],{esc,number:String},history);
+  assert.match(latest,/&lt;Alice>/);assert.match(latest,/id="last-deal-newer" data-deal-round="" disabled/);
+  assert.match(latest,/Showing the latest completed round/);
+});

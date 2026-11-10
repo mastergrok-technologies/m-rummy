@@ -2,7 +2,7 @@ import { accountPageMarkup } from './ui/account-pages.js';
 import { avatarSource } from './ui/avatars.js';
 import { homeMarkup, homeTablesMarkup, homeAttentionMarkup } from './ui/home.js';
 import { lastDealPanelMarkup } from './ui/panels/last-deal.js';
-import { bestDeclarationPanelMarkup, declarationPanelMarkup } from './ui/panels/declaration.js';
+import { bestDeclarationPanelMarkup, declarationPanelMarkup, declarationStatus } from './ui/panels/declaration.js';
 import { standingsPanelMarkup } from './ui/panels/standings.js';
 import { handPanelMarkup } from './ui/panels/hand.js';
 import { settingsPanelMarkup } from './ui/panels/settings.js';
@@ -13,6 +13,7 @@ import { waitingRoomMarkup } from './ui/waiting-room.js';
 import { profileMarkup } from './ui/profile.js';
 import { accountFormMarkup } from './ui/account.js';
 import { joinedTablesMarkup, tablePickerMarkup } from './ui/tables.js';
+import { tutorialTopicsMarkup, tutorialPracticeMarkup } from './ui/tutorial.js';
 import { tutorialSteps } from './tutorial.js';
 import { remainingSeconds, reconcileGroups, tableStandings, presencePresentation, handIdentity, arrangementSnapshot, gameplayGuidance, recentChatState } from './board-state.js';
 const app = document.querySelector('#app');
@@ -28,7 +29,8 @@ let presenceSequence = 0;
 let openGamePanel = null, declarationError = '', chatComposerMode = 'replies';
 const chatReplies = ['Hello everyone!', 'Good luck!', 'Nice hand!', 'Well played!', 'Thanks!', 'One moment, please.'];
 const chatEmojis = [['😀', 'Grinning face'], ['😄', 'Smiling face'], ['😂', 'Laughing with tears'], ['🙂', 'Slight smile'], ['👍', 'Thumbs up'], ['👏', 'Applause'], ['🎉', 'Celebration'], ['❤️', 'Heart']];
-let tutorialIndex = 0;
+let tutorialIndex = 0, lastDealRound = null;
+const tutorialAnswers = new Map();
 let preferences = {};
 let preferenceSaveMessage = 'Changes are saved automatically on this browser.', panelFromSettings = false;
 try { preferences = JSON.parse(localStorage.getItem('mr-preferences') || '{}') || {}; if (typeof preferences !== 'object' || Array.isArray(preferences)) preferences = {}; } catch { /* Optional preferences. */ }
@@ -329,6 +331,8 @@ function renderRoom() {
 }
 function updateClock() {
   updateTableClocks();
+  if (!state) return;
+  for (const clock of document.querySelectorAll('[data-declaration-clock]')) clock.textContent = `${remainingSeconds(state.deadline, clockOffset)}s left on your turn`;
   const el = document.querySelector('#turn-clock'); if (!el || !state) return;
   const seconds = remainingSeconds(state.deadline, clockOffset);
   el.textContent = `${seconds}s`; el.classList.toggle('urgent', seconds <= 15);
@@ -422,12 +426,15 @@ async function restoreTables() {
   else tablePicker();
 }
 function showTutorial() {
-  tutorialIndex = 0; renderTutorial();
+  tutorialIndex = 0; tutorialAnswers.clear(); renderTutorial();
   document.querySelector('#rules-dialog').close();
   document.querySelector('#tutorial-dialog').showModal();
 }
 function renderTutorial() {
   const step = tutorialSteps[tutorialIndex];
+  document.querySelector('#tutorial-topics').innerHTML = tutorialTopicsMarkup(tutorialIndex, esc);
+  document.querySelector('#tutorial-practice').innerHTML = tutorialPracticeMarkup(tutorialIndex, tutorialAnswers.get(tutorialIndex), esc);
+  document.querySelector('#tutorial-live-note').textContent = tables.some(table => table.status === 'playing') ? 'Your game stays live. Turn timers keep running while you learn.' : 'Practice examples use teaching cards, separate from your hand.';
   document.querySelector('#tutorial-title').textContent = step.title;
   document.querySelector('#tutorial-progress').textContent = `Step ${tutorialIndex + 1} of ${tutorialSteps.length}`;
   document.querySelector('#tutorial-dialog').dataset.step = String(tutorialIndex + 1);
@@ -439,6 +446,7 @@ function showGamePanel(panel, fromSettings = false) {
   if (!state) return;
   openGamePanel = panel; panelFromSettings = fromSettings;
   if (panel === 'chat') chatComposerMode = 'replies';
+  if (panel === 'lastDeal') lastDealRound = state.history?.[0]?.round ?? null;
   document.querySelector('#game-panel-content').innerHTML = ''; renderGamePanel();
   const dialog = document.querySelector('#game-dialog');
   if (dialog.open && (fromSettings || panel === 'settings')) {
@@ -484,11 +492,14 @@ function renderGamePanel() {
   } else if (openGamePanel === 'settings') {
     content.innerHTML = settingsPanelMarkup(state, hasLastDeal, preferences, preferenceSaveMessage, { esc });
   } else if (openGamePanel === 'lastDeal') {
-    content.innerHTML = lastDealPanelMarkup(lastDeal, { esc, number });
+    const deals = state.history || [];
+    const index = Math.max(0, deals.findIndex(deal => deal.round === lastDealRound));
+    lastDealRound = deals[index]?.round ?? null;
+    content.innerHTML = lastDealPanelMarkup(deals[index], { esc, number }, deals);
   } else if (openGamePanel === 'bestDeclaration') {
-    content.innerHTML = bestDeclarationPanelMarkup(busy, connection);
+    content.innerHTML = bestDeclarationPanelMarkup(busy, connection, state, selected, esc);
   } else if (openGamePanel === 'declaration') {
-    content.innerHTML = declarationPanelMarkup(declarationError, busy, connection, esc);
+    content.innerHTML = declarationPanelMarkup(declarationError, busy, connection, esc, state, selected);
   }
   if (panelFromSettings && ['information', 'lastDeal'].includes(openGamePanel)) content.insertAdjacentHTML('beforeend', '<button type="button" class="button secondary settings-back" data-settings-panel="settings">Back to settings</button>');
   if (focused === 'dialog-chat-input') {
@@ -503,7 +514,11 @@ function renderGamePanel() {
     const control = document.getElementById(focused) || dialog.querySelector('[data-close]');
     control?.focus({ preventScroll: true });
   }
-  syncChatIndicators();
+  if (['lastDeal','declaration','bestDeclaration'].includes(openGamePanel)) {
+    dialog.scrollTop = panelScroll;
+    if (focused) (document.getElementById(focused) || dialog.querySelector('[data-close]'))?.focus({preventScroll:true});
+  }
+  updateClock(); syncChatIndicators();
 }
 function updatePresence() {
   if (!state) return;
@@ -564,7 +579,12 @@ function syncControls(fresh = false) {
     indicator.classList.toggle('offline', connection !== 'connected');
   }
   const arrange = document.querySelector('[data-panel-action="arrange"]');
-  if (arrange) arrange.disabled = blocked;
+  const declarationStatusEl = document.querySelector('#declaration-turn-status');
+  if (declarationStatusEl) {
+    const text = declarationStatus(state, selected, busy, connection);
+    if (declarationStatusEl.textContent !== text) declarationStatusEl.textContent = text;
+  }
+  if (arrange) arrange.disabled = blocked || state.status !== 'playing' || !state.hand.length;
   const dialogSend = document.querySelector('#dialog-chat-send');
   if (dialogSend) dialogSend.disabled = blocked || !chatDraft.trim();
   const counter = document.querySelector('#dialog-chat-count');
@@ -702,6 +722,13 @@ document.querySelector('#game-dialog').addEventListener('click', event => {
   if (['information', 'lastDeal', 'settings'].includes(target.dataset.settingsPanel)) {
     showGamePanel(target.dataset.settingsPanel, target.dataset.settingsPanel !== 'settings'); return;
   }
+  if (target.dataset.dealRound) {
+    lastDealRound = Number(target.dataset.dealRound); renderGamePanel(); document.querySelector('#last-deal-round')?.focus(); return;
+  }
+  if (target.hasAttribute('data-declaration-review')) {
+    document.querySelector('#game-dialog').close();
+    document.querySelector('#player-hand-panel')?.scrollIntoView({block:'start'}); document.querySelector('#player-hand-title')?.focus({preventScroll:true}); return;
+  }
   if (target.dataset.chatMode) {
     const input = document.querySelector('#dialog-chat-input');
     const start = input.selectionStart, end = input.selectionEnd;
@@ -824,6 +851,23 @@ document.querySelector('#table-entry-form').addEventListener('submit', async eve
     document.querySelector('#table-entry-error').textContent = e.message;
     toast(e.message, true);
   } finally { busy = false; syncControls(); }
+});
+document.querySelector('#game-dialog').addEventListener('change', event => {
+  if (event.target.id !== 'last-deal-round') return;
+  lastDealRound = Number(event.target.value); renderGamePanel(); document.querySelector('#last-deal-round')?.focus();
+});
+document.querySelector('#tutorial-dialog').addEventListener('click', event => {
+  const button = event.target.closest('button'); if (!button) return;
+  if (button.dataset.tutorialTopic !== undefined) {
+    const index = Number(button.dataset.tutorialTopic); if (!Number.isInteger(index) || !tutorialSteps[index]) return;
+    tutorialIndex = index; renderTutorial(); document.querySelector('#tutorial-title').focus();
+  }
+  if (button.dataset.tutorialAnswer !== undefined) {
+    const answer = Number(button.dataset.tutorialAnswer); if (![0,1].includes(answer)) return;
+    tutorialAnswers.set(tutorialIndex,answer);
+    document.querySelector('#tutorial-practice').innerHTML = tutorialPracticeMarkup(tutorialIndex, answer, esc);
+    document.querySelector(`[data-tutorial-answer="${answer}"]`)?.focus({preventScroll:true});
+  }
 });
 document.querySelector('#tutorial-button').addEventListener('click', showTutorial);
 document.querySelector('#tutorial-back').addEventListener('click', () => { tutorialIndex = Math.max(0, tutorialIndex - 1); renderTutorial(); document.querySelector('#tutorial-title').focus(); });
