@@ -377,3 +377,38 @@ test('confirmation snapshots reject changed turns and penalties but tolerate cha
   const lobby={...state,status:'lobby'},leave=confirmationIntent(lobby,'leave');assert.equal(confirmationProblem(leave,lobby),'');assert.notEqual(confirmationProblem(leave,state),'');
   assert.match(confirmationDetails(drawing,'drop',null,esc),/20 penalty points/);assert.match(confirmationDetails(lobby,'leave',null,esc),/other joined tables remain/);
 });
+
+test('private hand filters count jokers and preserve physical groups without exposing other hands',async()=>{
+  const {handMatchesFilter}=await import('../public/ui/panels/hand.js');
+  const state={code:'ABCDEF123456',round:1,status:'playing',me:'me',wildRank:5,players:[{id:'me'},{id:'other',hand:[{id:'secret',rank:7,suit:'C'}]}],hand:[{id:'a',rank:5,suit:'H'},{id:'b',rank:0,suit:'J'},{id:'c',rank:2,suit:'S'}]};
+  const groups=[{title:'Saved group',ids:['a','c','stale']}],original=structuredClone(groups);
+  const helpers={esc,number:String,ranks:{5:'5'},card:card=>`<i data-face="${card.id}"></i>`};
+  assert.equal(handMatchesFilter(state.hand[0],'jokers',5),true);assert.equal(handMatchesFilter(state.hand[1],'jokers',5),true);assert.equal(handMatchesFilter(state.hand[2],'jokers',5),false);
+  const html=handPanelMarkup(state,groups,helpers,'jokers');
+  assert.match(html,/Showing 2 of 3 cards/);assert.match(html,/data-face="a"/);assert.match(html,/data-face="b"/);assert.doesNotMatch(html,/data-face="c"|secret|stale/);assert.deepEqual(groups,original);
+  assert.match(handPanelMarkup(state,groups,helpers,'D'),/No cards match this filter/);
+  assert.match(handPanelMarkup(state,groups,helpers,'unknown'),/Showing 3 of 3 cards/);
+});
+
+test('information topics explain server-supported joker and drop choices without private cards',()=>{
+  const state={code:'<room>',round:1,status:'playing',players:[{id:'me'}],hasPassword:true,hand:[{id:'private-card'}]};
+  const html=informationPanelMarkup(state,{esc,number:String});
+  assert.match(html,/data-info-topic="info-jokers-title"/);assert.match(html,/Discard before dropping/);assert.match(html,/printed cut joker makes aces wild/);assert.doesNotMatch(html,/private-card|<room>/);
+});
+
+test('offline recovery preserves only a valid room code and never an arbitrary destination',async()=>{
+  const {recoveryPath}=await import('../public/offline.js');
+  assert.equal(recoveryPath('?room=abcdef123456&next=https://evil.test&password=secret'),'/?room=ABCDEF123456');
+  for(const search of ['', '?room=invalid','?next=https://evil.test','?room=%3Cscript%3E'])assert.equal(recoveryPath(search),'/');
+});
+
+test('offline service worker caches recovery assets but never API responses or hands',async()=>{
+  const {readFile}=await import('node:fs/promises'),{runInNewContext}=await import('node:vm');
+  const handlers={},added=[],matched=[];
+  runInNewContext(await readFile(new URL('../public/sw.js',import.meta.url),'utf8'),{URL,self:{location:{origin:'https://rummy.test'},addEventListener:(name,callback)=>{handlers[name]=callback;}},caches:{open:async()=>({addAll:async paths=>added.push(...paths)}),match:async path=>{matched.push(path);return 'offline';}},fetch:async()=>{throw new Error('offline');}});
+  let ready;handlers.install({waitUntil:promise=>{ready=promise;}});await ready;
+  assert.deepEqual(added,['/offline.html','/offline.js','/style.css']);
+  let response;handlers.fetch({request:{method:'GET',mode:'navigate',url:'https://rummy.test/?room=ABCDEF123456'},respondWith:promise=>{response=promise;}});assert.equal(await response,'offline');
+  for(const [method,url] of [['GET','https://rummy.test/api/tables'],['POST','https://rummy.test/api/action'],['GET','https://other.test/offline.js']])handlers.fetch({request:{method,mode:'cors',url},respondWith:()=>{assert.fail('Non-recovery request must use the network');}});
+  assert.deepEqual(matched,['/offline.html']);
+});

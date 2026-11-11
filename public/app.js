@@ -29,6 +29,7 @@ let tables = [], tableLimit = 3, tableEpoch = 0, homeTab = 'points', homeFilter 
 const tableUi = new Map(), turnWarnings = new Map(), chatAttention = new Map();
 const presenceClient = [...crypto.getRandomValues(new Uint8Array(16))].map(n => n.toString(16).padStart(2, '0')).join('');
 let presenceSequence = 0;
+let handFilter = 'all', handFilterKey = '';
 let openGamePanel = null, declarationError = '', chatComposerMode = 'replies';
 const chatReplies = ['Hello everyone!', 'Good luck!', 'Nice hand!', 'Well played!', 'Thanks!', 'One moment, please.'];
 const chatEmojis = [['😀', 'Grinning face'], ['😄', 'Smiling face'], ['😂', 'Laughing with tears'], ['🙂', 'Slight smile'], ['👍', 'Thumbs up'], ['👏', 'Applause'], ['🎉', 'Celebration'], ['❤️', 'Heart']];
@@ -490,6 +491,7 @@ function renderTutorial() {
 function showGamePanel(panel, fromSettings = false) {
   if (!state) return;
   openGamePanel = panel; panelFromSettings = fromSettings;
+  if (panel === 'hand') { handFilter = 'all'; handFilterKey = `${state.code}:${state.round}`; }
   if (panel === 'chat') chatComposerMode = 'replies';
   if (panel === 'lastDeal') lastDealRound = state.history?.[0]?.round ?? null;
   document.querySelector('#game-panel-content').innerHTML = ''; renderGamePanel();
@@ -528,7 +530,9 @@ function renderGamePanel() {
     const messages = content.querySelector('.messages');
     messages.scrollTop = nearBottom ? messages.scrollHeight : scroll;
   } else if (openGamePanel === 'hand') {
-    content.innerHTML = handPanelMarkup(state, groups, { esc, number, card, ranks });
+    const key = `${state.code}:${state.round}`;
+    if (handFilterKey !== key) { handFilter = 'all'; handFilterKey = key; }
+    content.innerHTML = handPanelMarkup(state, groups, { esc, number, card, ranks }, handFilter);
   } else if (openGamePanel === 'standings') {
     const revealedOpen = content.querySelector('.standings-revealed')?.open || false;
     content.innerHTML = standingsPanelMarkup(state, revealedOpen, { esc, number, card, seatAvatar, ranks });
@@ -554,12 +558,12 @@ function renderGamePanel() {
     document.getElementById(focused)?.focus({ preventScroll: true });
   } else if (openGamePanel === 'hand') {
     dialog.scrollTop = panelScroll;
-    if (focused === 'hand-view-back') document.getElementById(focused)?.focus({ preventScroll: true });
+    if (focused === 'hand-view-back' || focused?.startsWith('hand-filter-')) document.getElementById(focused)?.focus({ preventScroll: true });
   } else if (openGamePanel === 'standings' && ['standings-reveal-toggle', 'standings-back'].includes(focused)) {
     const control = document.getElementById(focused) || dialog.querySelector('[data-close]');
     control?.focus({ preventScroll: true });
   }
-  if (['lastDeal','declaration','bestDeclaration'].includes(openGamePanel)) {
+  if (['lastDeal','declaration','bestDeclaration','information'].includes(openGamePanel)) {
     dialog.scrollTop = panelScroll;
     if (focused) (document.getElementById(focused) || dialog.querySelector('[data-close]'))?.focus({preventScroll:true});
   }
@@ -773,6 +777,12 @@ document.querySelector('#game-dialog').addEventListener('click', event => {
   if (!target || target.disabled) return;
   if (['information', 'lastDeal', 'settings'].includes(target.dataset.settingsPanel)) {
     showGamePanel(target.dataset.settingsPanel, target.dataset.settingsPanel !== 'settings'); return;
+  }
+  if (target.dataset.handFilter && ['all','H','D','C','S','jokers'].includes(target.dataset.handFilter)) {
+    handFilter = target.dataset.handFilter; renderGamePanel(); document.getElementById(`hand-filter-${handFilter}`)?.focus({preventScroll:true}); return;
+  }
+  if (target.dataset.infoTopic) {
+    const heading = document.getElementById(target.dataset.infoTopic); heading?.scrollIntoView({block:'start'}); heading?.focus({preventScroll:true}); return;
   }
   if (target.dataset.dealRound) {
     lastDealRound = Number(target.dataset.dealRound); renderGamePanel(); document.querySelector('#last-deal-round')?.focus(); return;

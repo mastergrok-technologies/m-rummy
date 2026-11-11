@@ -1650,3 +1650,57 @@ test('Declaration confirmation cannot submit a changed hand',async t=>{
   assert.match(await page.locator('#confirm-status').textContent(),/turn or cards changed/);
   assert.deepEqual(requests.map(request=>request.action),['draw']);assert.deepEqual(errors,[]);
 });
+
+for(const viewport of [{width:390,height:844},{width:768,height:1024},{width:1920,height:1080}]){
+  test(`View Cards filters preserve groups and selection at ${viewport.width}px`,async t=>{
+    const {page,room,requests,errors}=await fixture(t,viewport);
+    room.hand.push({id:'printed',rank:0,suit:'J'});room.version++;
+    await page.locator('[data-card="printed"]').waitFor();
+    for(const id of ['card-0','card-1','card-2'])await page.locator(`[data-card="${id}"]`).click();
+    await page.locator('[data-action="group"]').click();await page.locator('[data-card="card-0"]').click();
+    await open(page,'View cards');await page.locator('#hand-filter-jokers').click();
+    assert.equal(await page.locator('#game-dialog .card').count(),2);
+    await page.locator('#hand-filter-S').click();await page.getByText('No cards match this filter. Choose All to see your hand.',{exact:true}).waitFor();
+    await page.locator('#hand-filter-H').click();assert.equal(await page.locator('#game-dialog .card').count(),13);
+    await page.locator('#hand-filter-jokers').click();
+    room.hand=room.hand.filter(card=>card.id!=='card-4');room.version++;
+    await page.waitForFunction(()=>document.querySelector('#hand-filter-summary').textContent.includes('Showing 1 of 13'));
+    assert.equal(await page.locator('#hand-filter-jokers').getAttribute('aria-pressed'),'true');
+    assert.equal(await page.evaluate(()=>document.activeElement.id),'hand-filter-jokers');
+    assert.equal(await page.locator('#game-dialog').evaluate(el=>el.scrollWidth<=el.clientWidth),true);
+    await waitingScreenshot(page,`hand-joker-filter-${viewport.width}`);
+    await page.locator('#hand-view-back').click();
+    assert.equal(await page.locator('[data-card="card-0"]').getAttribute('aria-pressed'),'true');assert.equal(await page.locator('.ungroup').count(),1);
+    assert.equal(requests.length,0);assert.deepEqual(errors,[]);
+  });
+}
+
+test('Table Information topic focus survives incoming snapshots without showing cards',async t=>{
+  const {page,room,requests,errors}=await fixture(t,{width:390,height:844});
+  await open(page,'Table info');await page.locator('#info-jump-jokers').click();
+  assert.equal(await page.evaluate(()=>document.activeElement.id),'info-jokers-title');
+  room.messages.push({id:'info-update',name:'Friend',text:'Info remains open',time:Date.now()});room.version++;
+  await page.locator('#messages').getByText('Info remains open',{exact:true}).waitFor({state:'attached'});
+  assert.equal(await page.evaluate(()=>document.activeElement.id),'info-jokers-title');
+  assert.equal(await page.locator('#game-dialog .card').count(),0);
+  await page.locator('#info-jump-details').click();assert.equal(await page.evaluate(()=>document.activeElement.id),'info-facts-heading');
+  await waitingScreenshot(page,'information-topic-navigation-mobile');
+  assert.equal(requests.length,0);assert.deepEqual(errors,[]);
+});
+
+test('Offline Recovery keeps the room code and waits for a deliberate return',async t=>{
+  const {page,errors}=await fixture(t,{width:390,height:844});
+  await page.goto('http://rummy.test/offline.html?room=abcdef123456&next=https://other.test');
+  await page.getByRole('heading',{name:'Reconnect to your game.',exact:true}).waitFor();
+  assert.equal(await page.locator('#offline-return').getAttribute('href'),'/?room=ABCDEF123456');
+  const url=page.url();
+  await page.evaluate(()=>{Object.defineProperty(navigator,'onLine',{configurable:true,value:false});window.dispatchEvent(new Event('offline'));});
+  assert.match(await page.locator('#offline-status').textContent(),/no network connection/);
+  await page.evaluate(()=>{Object.defineProperty(navigator,'onLine',{configurable:true,value:true});window.dispatchEvent(new Event('online'));});
+  assert.match(await page.locator('#offline-status').textContent(),/reports a network connection/);assert.equal(page.url(),url);
+  assert.match(await page.locator('.offline-round-note').textContent(),/seat may have changed or expired/);
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+  await waitingScreenshot(page,'offline-recovery-mobile');
+  await page.locator('#offline-return').click();await page.locator('#connection').waitFor();
+  assert.deepEqual(errors,[]);
+});
