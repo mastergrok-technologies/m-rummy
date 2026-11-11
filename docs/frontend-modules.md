@@ -17,7 +17,7 @@ The browser entry point is `public/app.js`. It owns session state, networking, t
 | `public/ui/gameplay.js` | In-game table, cards and sidebar markup | Room snapshot, local hand grouping, draft and helper functions |
 | `public/ui/round-results.js` | Finished-round personal summary, score table and next-round actions | Server results, board-state and caller-provided helpers |
 | `public/ui/panels/chat.js` | Private table chat dialog markup | Messages, composer state and helpers |
-| `public/ui/panels/information.js` | Game information and room rules dialog markup | Room snapshot and formatting helpers |
+| `public/ui/panels/information.js` | Game information, rule topics and room rules dialog markup | Room snapshot and formatting helpers |
 | `public/ui/panels/settings.js` | Display settings dialog markup | Preferences, last-deal availability and save status |
 | `public/board-state.js` | Pure table state calculations, phase guidance and hand-bound arrangement snapshots | None |
 | `public/tutorial.js` | Tutorial content and optional practice questions | None |
@@ -48,3 +48,5 @@ This PR starts the modularization without changing backend routes or deployment 
 ## Phase 7: last-deal and declaration dialogs
 
 `public/ui/panels/last-deal.js` renders server-recorded round penalties and the empty state. `public/ui/panels/declaration.js` renders invalid-declaration retry and best-declaration guidance. The controller continues to own errors, dialog lifecycle, timers, event handling and connection status.
+
+`public/offline.js` owns validated room-code recovery navigation and advisory network status on the cached offline page. It does not use the game controller, API, credentials or hand state.
