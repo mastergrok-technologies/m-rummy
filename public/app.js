@@ -11,6 +11,7 @@ import { chatPanelMarkup } from './ui/panels/chat.js';
 import { gameplayMarkup } from './ui/gameplay.js';
 import { waitingRoomMarkup } from './ui/waiting-room.js';
 import { profileMarkup } from './ui/profile.js';
+import { setupSummary, inviteMarkup, confirmationIntent, confirmationProblem, confirmationDetails } from './ui/table-flows.js';
 import { inviteCode } from './ui/invite.js';
 import { accountFormMarkup, accountValidation } from './ui/account.js';
 import { joinedTablesMarkup, tablePickerMarkup } from './ui/tables.js';
@@ -21,6 +22,7 @@ const app = document.querySelector('#app');
 const suits = { S: '♠', H: '♥', D: '♦', C: '♣', J: '✦' };
 const ranks = { 0: 'JK', 1: 'A', 11: 'J', 12: 'Q', 13: 'K' };
 let session, state, busy = false, polling = false, failures = 0, mode = 'create', groups = [], selected = new Set(), chatDraft = '', clockOffset = 0;
+let confirmIntent = null, inviteEpoch = 0;
 let lastCode = '', confirmAction, arrangementUndo = null;
 let connection = 'connected';
 let tables = [], tableLimit = 3, tableEpoch = 0, homeTab = 'points', homeFilter = 'all', pendingHomeInvite = '';
@@ -161,6 +163,8 @@ function openTableEntry(entryMode = 'create', code = '') {
   document.querySelector('#table-entry-error').textContent = '';
   document.querySelector('#new-table-code').removeAttribute('aria-invalid');
   updateInvitePreview();
+  document.querySelector('#new-table-password').type = 'password';
+  document.querySelector('#table-password-toggle').textContent = 'Show password'; document.querySelector('#table-password-toggle').setAttribute('aria-pressed','false');
   document.querySelector('#tables-dialog').showModal();
   document.querySelector(entryMode === 'join' ? '#new-table-code' : '#new-table-password').focus();
 }
@@ -227,10 +231,28 @@ async function loadProfile(offset = 0, filter = profileFilter) {
     if (epoch === profileEpoch) { profileBusy = false; syncProfileControls(); }
   }
 }
-function confirm(title, text, action) {
+function confirm(title, text, action, kind, cardId) {
   document.querySelector('#confirm-title').textContent = title;
   document.querySelector('#confirm-text').textContent = text;
-  confirmAction = action; document.querySelector('#confirm-dialog').showModal();
+  confirmAction = action; confirmIntent = confirmationIntent(state,kind,cardId);
+  document.querySelector('#confirm-details').innerHTML = confirmationDetails(state,kind,cardId,esc);
+  document.querySelector('#confirm-yes').textContent = kind === 'drop' ? 'Drop this round' : kind === 'leave' ? 'Leave table' : 'Submit declaration';
+  document.querySelector('#confirm-dialog').showModal(); syncFlowControls();
+}
+function syncFlowControls() {
+  if (document.querySelector('#confirm-dialog').open) {
+    const problem = confirmationProblem(confirmIntent,state);
+    const status = problem || (connection !== 'connected' ? 'Refreshing your table. Wait for a fresh snapshot before confirming.' : busy ? 'Wait for the current action to finish.' : '');
+    const output = document.querySelector('#confirm-status'); if (output.textContent !== status) output.textContent = status;
+    document.querySelector('#confirm-yes').disabled = !!status;
+  }
+  if (document.querySelector('#invite-dialog').open && (!state || state.code !== document.querySelector('#invite-room-code').textContent)) {
+    document.querySelector('#invite-status').textContent = 'This table is no longer selected. Close the invite and check your joined tables.';
+    for (const copy of document.querySelectorAll('.invite-copy-actions button')) copy.disabled = true;
+  } else if (document.querySelector('#invite-dialog').open && state) {
+    document.querySelector('#invite-seat-summary').textContent = state.players.length >= 6 ? '6 / 6 seated · Table full' : `${6-state.players.length} open ${state.players.length===5?'seat':'seats'}`;
+    document.querySelector('#invite-access-note').textContent = state.hasPassword ? 'Password protected. Send the room password separately; it is never included in this link.' : 'No room password. Share this private link only with people you want to invite.';
+  }
 }
 function turnText() {
   if (state.status === 'lobby') return 'The table is yours. Invite your people.';
@@ -565,8 +587,9 @@ function updatePresence() {
   }
 }
 function syncControls(fresh = false) {
-  for (const control of document.querySelectorAll('#table-entry-form input, [data-table-mode]')) control.disabled = busy;
-  syncAuthControls(); updateConnectionNotice(); syncProfileControls(); syncAccountPageControls(); syncChatIndicators();
+  for (const control of document.querySelectorAll('#table-entry-form input, #table-password-toggle, [data-table-mode]')) control.disabled = busy;
+  document.querySelector('#table-entry-submit').textContent = busy ? (tableEntryMode === 'create' ? 'Creating table…' : 'Joining table…') : tableEntryMode === 'create' ? 'Create table' : 'Join table';
+  syncFlowControls(); syncAuthControls(); updateConnectionNotice(); syncProfileControls(); syncAccountPageControls(); syncChatIndicators();
   for (const button of document.querySelectorAll('[data-switch-table], [data-attention-table], [data-add-table], [data-home-entry], #table-entry-form button[type="submit"]')) button.disabled = busy || connection !== 'connected' || ((button.hasAttribute('data-add-table') || button.hasAttribute('data-home-entry')) && tables.length >= tableLimit);
   for (const button of document.querySelectorAll('[data-home], [data-results-home], [data-home-tab], [data-home-filter]')) button.disabled = busy;
   if (!state) {
@@ -686,8 +709,8 @@ app.addEventListener('click', async event => {
   if (target.dataset.draw) return action('draw', { source: target.dataset.draw });
   switch (target.dataset.action) {
     case 'invite': {
-      document.querySelector('#invite-url').value = `${location.origin}/?room=${state.code}`;
-      document.querySelector('#invite-dialog').showModal(); break;
+      inviteEpoch++; document.querySelector('#invite-content').innerHTML = inviteMarkup(state,location.origin,esc);
+      document.querySelector('#invite-dialog').showModal(); syncFlowControls(); break;
     }
     case 'rules': document.querySelector('#rules-dialog').showModal(); break;
     case 'tutorial': showTutorial(); break;
@@ -710,14 +733,14 @@ app.addEventListener('click', async event => {
       groups = groups.map(g => ({ ...g, title: 'Group', ids: g.ids.filter(id => !selected.has(id)) })).filter(g => g.ids.length);
       groups.push({ title: 'Your group', ids: [...selected] }); selected.clear(); saveGroups(); renderRoom(); break;
     }
-    case 'drop': confirm('Sit this round out?', `You’ll take ${state.players.find(p => p.id === state.me).turns === 0 ? 20 : 40} points and rejoin the next deal.`, () => action('drop')); break;
+    case 'drop': confirm('Sit this round out?', `You’ll take ${state.players.find(p => p.id === state.me).turns === 0 ? 20 : 40} points and rejoin the next deal.`, () => action('drop'), 'drop'); break;
     case 'leave':
       if (state.status === 'playing') toast('Leave after the round ends. You can drop to sit this round out.', true);
-      else confirm('Leave the table?', 'Your seat will be released. If you’re the host, another friend takes over.', () => action('leave'));
+      else confirm('Leave the table?', 'Your seat will be released. If you’re the host, another friend takes over.', () => action('leave'), 'leave');
       break;
     case 'declare': {
       const cardId = [...selected][0];
-      confirm('Ready to show your hand?', 'Your selected card is the final discard. We’ll check the other 13 for two sequences, one pure, and valid groups throughout.', () => action('declare', { cardId })); break;
+      confirm('Ready to show your hand?', 'Your selected card is the final discard. We’ll check the other 13 for two sequences, one pure, and valid groups throughout.', () => action('declare', { cardId }), 'declare', cardId); break;
     }
     case 'discard': await action('discard', { cardId: [...selected][0] }); break;
     case 'start': case 'addBot': case 'arrange': await action(target.dataset.action); break;
@@ -861,6 +884,8 @@ app.addEventListener('submit', async event => {
 let tableEntryMode = 'create';
 function setTableEntryMode(mode) {
   tableEntryMode = mode;
+  document.querySelector('#table-setup-summary').hidden = mode !== 'create';
+  document.querySelector('#table-setup-access').textContent = setupSummary(!!document.querySelector('#new-table-password').value);
   document.querySelector('#table-entry-error').textContent = '';
   document.querySelector('#new-table-code').removeAttribute('aria-invalid');
   document.querySelector('#new-table-code-row').hidden = mode !== 'join';
@@ -905,7 +930,8 @@ document.querySelector('#new-table-code').addEventListener('input', event => {
   event.target.removeAttribute('aria-invalid'); document.querySelector('#table-entry-error').textContent = ''; updateInvitePreview();
 });
 document.querySelector('#tables-dialog').addEventListener('close', () => {
-  document.querySelector('#new-table-password').value = ''; document.querySelector('#new-table-access').value = '';
+  document.querySelector('#new-table-password').value = ''; document.querySelector('#new-table-password').type = 'password'; document.querySelector('#new-table-access').value = '';
+  document.querySelector('#table-password-toggle').textContent = 'Show password'; document.querySelector('#table-password-toggle').setAttribute('aria-pressed','false');
 });
 document.querySelector('#table-entry-form').addEventListener('submit', async event => {
   event.preventDefault(); if (busy || connection !== 'connected') return;
@@ -1118,11 +1144,35 @@ document.querySelectorAll('dialog').forEach(dialog => {
   dialog.addEventListener('beforetoggle', event => { if (event.newState === 'open') opener = document.activeElement; });
 });
 document.addEventListener('click', event => { const button = event.target.closest('[data-close]'); if (button) document.getElementById(button.dataset.close).close(); });
-document.querySelector('#confirm-yes').addEventListener('click', () => { document.querySelector('#confirm-dialog').close(); confirmAction?.(); });
-document.querySelector('#copy-invite').addEventListener('click', async () => {
-  const input = document.querySelector('#invite-url');
-  try { await navigator.clipboard.writeText(input.value); toast('Invite copied. Send it to your people.'); }
-  catch { input.focus(); input.select(); toast('Select and copy this link to share it.'); }
+document.querySelector('#confirm-yes').addEventListener('click', () => {
+  if (busy || connection !== 'connected' || confirmationProblem(confirmIntent,state)) { syncFlowControls(); return; }
+  const next = confirmAction; confirmAction = null; confirmIntent = null;
+  document.querySelector('#confirm-dialog').close(); next?.();
+});
+document.querySelector('#confirm-dialog').addEventListener('close', () => { confirmAction = null; confirmIntent = null; });
+document.querySelector('#invite-dialog').addEventListener('close', () => { inviteEpoch++; });
+document.querySelector('#invite-dialog').addEventListener('click', async event => {
+  const button = event.target.closest('#copy-invite, #copy-invite-code'); if (!button || button.disabled) return;
+  const epoch = inviteEpoch;
+  const codeOnly = button.id === 'copy-invite-code', input = document.querySelector(codeOnly ? '#invite-code-value' : '#invite-url');
+  const text = input.value;
+  for (const copy of document.querySelectorAll('.invite-copy-actions button')) copy.disabled = true;
+  try {
+    await navigator.clipboard.writeText(text);
+    if (epoch === inviteEpoch) document.querySelector('#invite-status').textContent = codeOnly ? 'Room code copied. Share it with the room password separately, if required.' : 'Invite link copied. You can now paste it into a private message.';
+  } catch {
+    if (epoch === inviteEpoch) {
+      input.focus(); input.select();
+      document.querySelector('#invite-status').textContent = 'Automatic copy is unavailable. The text is selected; use your device’s Copy command.';
+    }
+  } finally {
+    if (epoch === inviteEpoch) for (const copy of document.querySelectorAll('.invite-copy-actions button')) copy.disabled = false;
+  }
+});
+document.querySelector('#new-table-password').addEventListener('input', () => { document.querySelector('#table-setup-access').textContent = setupSummary(!!document.querySelector('#new-table-password').value); });
+document.querySelector('#table-password-toggle').addEventListener('click', event => {
+  const input = document.querySelector('#new-table-password'), show = input.type === 'password'; input.type = show ? 'text' : 'password';
+  event.currentTarget.textContent = show ? 'Hide password' : 'Show password'; event.currentTarget.setAttribute('aria-pressed',String(show));
 });
 async function boot() {
   app.setAttribute('aria-busy', 'true');

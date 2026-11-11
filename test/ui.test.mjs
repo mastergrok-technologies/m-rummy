@@ -1583,3 +1583,70 @@ test('Join Friends accepts full invite links and rejects unrelated links before 
   assert.equal(joins.length,2);assert.equal(joins[1].code,'DDDDDD123456');assert.equal('accessKey' in joins[1],false);
   assert.equal(await page.locator('#new-table-password').inputValue(),'');assert.equal(rooms.size,2);assert.deepEqual(errors,[]);
 });
+
+for(const viewport of [{width:390,height:844},{width:768,height:1024},{width:1920,height:1080}]){
+  test(`Create Table explains access and clears closed passwords at ${viewport.width}px`,async t=>{
+    const {page,errors}=await fixture(t,viewport);
+    await page.locator('[data-add-table]').click();
+    assert.match(await page.locator('#table-setup-access').textContent(),/Anyone with the link/);
+    await page.locator('#new-table-password').fill('room-secret');
+    assert.match(await page.locator('#table-setup-access').textContent(),/Password-protected/);
+    await page.locator('#table-password-toggle').click();assert.equal(await page.locator('#new-table-password').getAttribute('type'),'text');
+    assert.equal(await page.locator('#tables-dialog').evaluate(el=>el.scrollWidth<=el.clientWidth),true);
+    await waitingScreenshot(page,`create-table-access-${viewport.width}`);
+    await page.getByRole('button',{name:'Close add table',exact:true}).click();
+    await page.waitForFunction(()=>document.querySelector('#new-table-password').value==='');
+    await page.locator('[data-add-table]').click();assert.equal(await page.locator('#new-table-password').getAttribute('type'),'password');
+    await page.locator('[data-table-mode="join"]').click();assert.equal(await page.locator('#table-setup-summary').isVisible(),false);
+    await page.locator('[data-table-mode="create"]').click();assert.equal(await page.locator('#table-setup-summary').isVisible(),true);
+    assert.deepEqual(errors,[]);
+  });
+}
+
+test('Invite Friends confirms real clipboard writes and selects the correct fallback text',async t=>{
+  const {page,room,requests,errors}=await fixture(t,{width:390,height:844},false,{hasPassword:true});
+  await page.evaluate(()=>{window.copied=[];Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async text=>{window.copied.push(text);}}});});
+  await page.locator('[data-action="invite"]').first().click();
+  assert.match(await page.locator('#invite-access-note').textContent(),/Send the room password separately/);
+  await page.locator('#copy-invite').click();await page.waitForFunction(()=>document.querySelector('#invite-status').textContent.includes('link copied'));
+  await page.locator('#copy-invite-code').click();await page.waitForFunction(()=>document.querySelector('#invite-status').textContent.includes('code copied'));
+  assert.deepEqual(await page.evaluate(()=>window.copied),[`http://rummy.test/?room=${room.code}`,room.code]);
+  await page.evaluate(()=>{navigator.clipboard.writeText=async()=>{throw new Error('Clipboard denied');};});
+  await page.locator('#copy-invite-code').click();await page.waitForFunction(()=>document.querySelector('#invite-status').textContent.includes('Automatic copy is unavailable'));
+  assert.equal(await page.evaluate(()=>document.activeElement.id),'invite-code-value');
+  assert.deepEqual(await page.locator('#invite-code-value').evaluate(el=>[el.selectionStart,el.selectionEnd]),[0,12]);
+  assert.equal(await page.locator('#invite-url').inputValue(),`http://rummy.test/?room=${room.code}`);
+  room.players.push({id:'third',name:'Third',count:0,total:0});room.version++;
+  await page.waitForFunction(()=>document.querySelector('#invite-seat-summary').textContent.includes('3 open seats'));
+  await waitingScreenshot(page,'invite-copy-fallback-mobile');assert.equal(requests.length,0);assert.deepEqual(errors,[]);
+});
+
+test('Drop and leave confirmations stop when the round conditions change',async t=>{
+  const {page,room,requests,errors}=await fixture(t,{width:390,height:844});
+  await page.locator('[data-action="drop"]').click();
+  assert.match(await page.locator('#confirm-details').textContent(),/20 penalty points/);
+  room.messages.push({id:'chat-only',name:'Friend',text:'Still here',time:Date.now()});room.version++;
+  await page.locator('#messages').getByText('Still here',{exact:true}).waitFor({state:'attached'});
+  assert.equal(await page.locator('#confirm-yes').isEnabled(),true);
+  room.players[0].turns=1;room.version++;
+  await page.waitForFunction(()=>document.querySelector('#confirm-yes').disabled);
+  assert.match(await page.locator('#confirm-status').textContent(),/drop conditions changed/);
+  await waitingScreenshot(page,'drop-stale-confirmation-mobile');
+  await page.getByRole('button',{name:'Cancel',exact:true}).last().click();
+  room.status='lobby';room.round=0;room.hand=[];room.version++;
+  await page.locator('.waiting-page').waitFor();await page.locator('[data-action="leave"]').click();
+  assert.match(await page.locator('#confirm-details').textContent(),/other joined tables remain/);
+  room.status='playing';room.round=1;room.hand=Array.from({length:13},(_,i)=>({id:`next-${i}`,rank:i+1,suit:'H'}));room.version++;
+  await page.waitForFunction(()=>document.querySelector('#confirm-yes').disabled);
+  assert.equal(requests.length,0);assert.deepEqual(errors,[]);
+});
+
+test('Declaration confirmation cannot submit a changed hand',async t=>{
+  const {page,room,requests,errors}=await fixture(t);
+  await page.locator('[data-draw="stock"]').click();await page.locator('[data-card="drawn"]').click();
+  await page.locator('[data-action="declare"]').click();
+  room.hand=room.hand.filter(card=>card.id!=='drawn');room.phase='draw';room.turn='other';room.version++;
+  await page.waitForFunction(()=>document.querySelector('#confirm-yes').disabled);
+  assert.match(await page.locator('#confirm-status').textContent(),/turn or cards changed/);
+  assert.deepEqual(requests.map(request=>request.action),['draw']);assert.deepEqual(errors,[]);
+});
