@@ -668,8 +668,8 @@ for (const [width, height] of [[390, 844], [768, 1024], [1024, 768], [1920, 1080
       const box = await page.locator(`#game-dialog img[src$="${asset}.svg"]`).boundingBox();
       assert.equal(box.width, 40); assert.equal(box.height, 40);
     }
-    const back = await page.locator('#game-dialog img[src$="chat-back.svg"]').boundingBox();
-    assert.equal(back.width, 36); assert.equal(back.height, 36);
+    const back = await page.getByRole('button',{name:'Close table panel',exact:true}).boundingBox();
+    assert.equal(back.width, 44); assert.equal(back.height, 44);
     assert.equal(await page.locator('#game-dialog').evaluate(el => el.scrollWidth <= el.clientWidth), true);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     if (process.env.UI_SCREENSHOT_DIR) {
@@ -700,7 +700,7 @@ test('settings remain usable offline and a completed round unlocks last deal wit
   assert.equal(await page.evaluate(() => document.activeElement.id), 'game-panel-title');
   assert.match(await page.locator('.last-deal-summary').innerText(), /<img src=x/);
   assert.equal(await page.locator('#game-dialog .card, #game-dialog script').count(), 0);
-  assert.equal(await page.locator('#game-dialog img').count(), 1);
+  assert.equal(await page.locator('#game-dialog img').count(), 0);
   assert.equal(await page.locator('#game-dialog tbody tr').count(), 2);
   if (process.env.UI_SCREENSHOT_DIR) {
     await mkdir(process.env.UI_SCREENSHOT_DIR, { recursive: true });
@@ -764,9 +764,9 @@ for (const [width, height] of [[390, 844], [768, 1024], [1024, 768], [1920, 1080
     assert.equal(facts['Maximum round penalty'], '80 points');
     assert.equal(facts['Stakes'], 'Free play · No money involved');
     assert.match(facts.Privacy, /Password protected/);
-    assert.match(await page.locator('#game-panel-title').evaluate(el => getComputedStyle(el).backgroundImage), /info-title.svg/);
-    const icon = await page.locator('#game-dialog img[src$="info-close.svg"]').boundingBox();
-    assert.equal(icon.width, 40); assert.equal(icon.height, 40);
+    assert.equal(await page.locator('#game-panel-title').evaluate(el => getComputedStyle(el).backgroundImage), 'none');
+    const icon = await page.getByRole('button',{name:'Close table panel',exact:true}).boundingBox();
+    assert.equal(icon.width, 44); assert.equal(icon.height, 44);
     assert.equal(await page.locator('#game-dialog').evaluate(el => el.scrollWidth <= el.clientWidth), true);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     if (process.env.UI_SCREENSHOT_DIR) {
@@ -839,8 +839,8 @@ for (const [width, height] of [[390, 844], [768, 1024], [1024, 768], [1920, 1080
     assert.equal(await page.locator('#game-dialog').evaluate(el => el.scrollWidth <= el.clientWidth), true);
     assert.equal(await page.locator('.standings-table-wrap').evaluate(el => el.scrollWidth <= el.clientWidth), true);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
-    const icon = await page.locator('#game-dialog img[src$="info-close.svg"]').boundingBox();
-    assert.equal(icon.width, 40); assert.equal(icon.height, 40);
+    const icon = await page.getByRole('button',{name:'Close table panel',exact:true}).boundingBox();
+    assert.equal(icon.width, 44); assert.equal(icon.height, 44);
     if (process.env.UI_SCREENSHOT_DIR) {
       await mkdir(process.env.UI_SCREENSHOT_DIR, { recursive: true });
       await page.screenshot({ path: resolve(process.env.UI_SCREENSHOT_DIR, `standings-${width}.png`), fullPage: true });
@@ -1704,3 +1704,24 @@ test('Offline Recovery keeps the room code and waits for a deliberate return',as
   await page.locator('#offline-return').click();await page.locator('#connection').waitFor();
   assert.deepEqual(errors,[]);
 });
+
+for(const viewport of [{width:320,height:760},{width:390,height:844},{width:844,height:390},{width:768,height:1024},{width:1440,height:1000}]){
+  test(`shared design keeps utility dialogs consistent at ${viewport.width}px`,async t=>{
+    const {page,requests,errors}=await fixture(t,viewport);
+    const expected=await page.evaluate(()=>getComputedStyle(document.documentElement).getPropertyValue('--ui-surface').trim());assert.equal(expected,'#ffffff');
+    for(const name of ['Settings','Table info','Standings','View cards','Chat']){
+      await open(page,name);
+      const metrics=await page.locator('#game-dialog').evaluate(dialog=>{
+        const style=getComputedStyle(dialog),title=getComputedStyle(dialog.querySelector('#game-panel-title')),close=dialog.querySelector('.dialog-head [data-close]').getBoundingClientRect();
+        return {background:style.backgroundColor,text:title.color,titleImage:title.backgroundImage,width:close.width,height:close.height,overflow:dialog.scrollWidth>dialog.clientWidth};
+      });
+      assert.equal(metrics.background,'rgb(255, 255, 255)');assert.equal(metrics.text,'rgb(24, 56, 43)');assert.equal(metrics.titleImage,'none');assert.equal(metrics.width,44);assert.equal(metrics.height,44);assert.equal(metrics.overflow,false);
+      assert.equal(await page.getByRole('button',{name:'Close table panel',exact:true}).textContent(),'×');
+      await waitingScreenshot(page,`consistent-${name.toLowerCase().replaceAll(' ','-')}-${viewport.width}`);
+      await close(page);
+    }
+    await page.locator('[data-home]').click();assert.equal(await page.evaluate(()=>document.activeElement.tagName),'H1');
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+    assert.equal(requests.length,0);assert.deepEqual(errors,[]);
+  });
+}

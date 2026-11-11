@@ -128,12 +128,14 @@ function landing() {
 }
 function showHome(tab = homeTab) {
   if (!account) return;
+  const focusHeading = document.activeElement?.closest('[data-home], [data-results-home], .brand');
   stashTableUi(); tableEpoch++;
   state = null; selected.clear(); groups = []; chatDraft = ''; homeTab = tab;
   document.querySelector('#game-dialog').close();
   history.replaceState({}, '', '/'); app.className = 'home-page';
   app.innerHTML = homeMarkup(account, tables, tableLimit, homeTab, esc, number, homeFilter) + connectionNotice();
   refreshHomeTables(); syncControls();
+  if (focusHeading) document.querySelector('.home-heading h1')?.focus();
 }
 function refreshHomeTables() {
   const root = document.querySelector('#home-table-list');
@@ -510,7 +512,7 @@ function renderGamePanel() {
   const hasLastDeal = Array.isArray(lastDeal?.scores) && lastDeal.scores.length > 0;
   if (openGamePanel === 'settings' && content.querySelector('[data-preference]')) {
     content.querySelector('[data-settings-panel=lastDeal]').disabled = !hasLastDeal;
-    content.querySelector('#settings-last-deal-help').textContent = hasLastDeal ? 'View the last completed round.' : 'Available after the first completed round.';
+    content.querySelector('#settings-last-deal-help').textContent = hasLastDeal ? 'Browse completed rounds at this table.' : 'Available after the first completed round.';
     return;
   }
   const focused = document.activeElement?.id;
@@ -523,7 +525,7 @@ function renderGamePanel() {
   const panelScroll = dialog.scrollTop;
   dialog.dataset.panel = openGamePanel;
   dialog.classList.toggle('declaration-notice', openGamePanel === 'declaration');
-  dialog.querySelector('.dialog-head [data-close]').innerHTML = ['information', 'standings'].includes(openGamePanel) ? '<img src="/assets/figma/info-close.svg" alt="">' : ['chat', 'settings', 'lastDeal'].includes(openGamePanel) ? '<img src="/assets/figma/chat-back.svg" alt="">' : '×';
+  dialog.querySelector('.dialog-head [data-close]').textContent = '×';
   document.querySelector('#game-panel-title').textContent = titles[openGamePanel];
   if (openGamePanel === 'chat') {
     content.innerHTML = chatPanelMarkup(state, chatDraft, chatComposerMode, busy, connection, { esc, chatEmojis, chatReplies, unreadCount: chatAttention.get(state.code)?.unread.length || 0 });

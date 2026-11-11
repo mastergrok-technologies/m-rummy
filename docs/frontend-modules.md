@@ -50,3 +50,7 @@ This PR starts the modularization without changing backend routes or deployment 
 `public/ui/panels/last-deal.js` renders server-recorded round penalties and the empty state. `public/ui/panels/declaration.js` renders invalid-declaration retry and best-declaration guidance. The controller continues to own errors, dialog lifecycle, timers, event handling and connection status.
 
 `public/offline.js` owns validated room-code recovery navigation and advisory network status on the cached offline page. It does not use the game controller, API, credentials or hand state.
+
+## Shared visual foundation
+
+`public/design-system.css` owns cross-screen design tokens, neutral utility surfaces, forms/actions, focus, motion and mobile control sizing. It loads after `style.css`, which retains existing screen/card geometry. See [UI_UX_REVIEW.md](UI_UX_REVIEW.md) for the application audit, implementation scope and browser-validation limits.
