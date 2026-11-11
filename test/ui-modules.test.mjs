@@ -355,3 +355,25 @@ test('invite codes accept same-site links and reject unrelated or malformed URLs
   assert.equal(inviteCode(`${origin}/?room=abcdef123456&password=ignored`,origin),'ABCDEF123456');
   for(const value of ['', 'short','abcdef12345g','https://other.example/?room=abcdef123456',`${origin}/other?room=abcdef123456`,'javascript:alert(1)','https://user:secret@rummy.example/?room=abcdef123456','//rummy.example/?room=abcdef123456']) assert.equal(inviteCode(value,origin),'',value);
 });
+
+test('table setup and invite summaries disclose access without revealing passwords',async()=>{
+  const {setupSummary,inviteMarkup}=await import('../public/ui/table-flows.js');
+  assert.match(setupSummary(true),/separately/);assert.match(setupSummary(false),/Anyone with the link/);
+  const html=inviteMarkup({code:'ABCDEF123456',players:[],hasPassword:true},'https://rummy.test',esc);
+  assert.match(html,/id="invite-code-value" readonly value="ABCDEF123456"/);
+  assert.match(html,/https:\/\/rummy.test\/\?room=ABCDEF123456/);assert.doesNotMatch(html,/password=/);
+  assert.match(inviteMarkup({code:'<bad>'},'https://rummy.test',esc),/&lt;bad>/);
+});
+
+test('confirmation snapshots reject changed turns and penalties but tolerate chat updates',async()=>{
+  const {confirmationIntent,confirmationProblem,confirmationDetails}=await import('../public/ui/table-flows.js');
+  const state={code:'ABCDEF123456',round:1,status:'playing',me:'me',turn:'me',phase:'discard',deadline:1234,hand:[{id:'a',rank:3,suit:'S'}],players:[{id:'me',turns:0}]};
+  const declare=confirmationIntent(state,'declare','a');assert.equal(confirmationProblem(declare,state),'');
+  assert.equal(confirmationProblem(declare,{...state,version:99,messages:[{text:'new'}]}),'');
+  for(const patch of [{deadline:5555},{turn:'other'},{round:2},{hand:[]},{drawnOpen:'a'},{status:'finished'},{code:'BBBBBB123456'}])assert.notEqual(confirmationProblem(declare,{...state,...patch}),'');
+  const drawing={...state,phase:'draw'},drop=confirmationIntent(drawing,'drop');assert.equal(confirmationProblem(drop,drawing),'');
+  assert.notEqual(confirmationProblem(drop,{...drawing,players:[{id:'me',turns:1}]}),'');
+  assert.notEqual(confirmationProblem(drop,state),'');
+  const lobby={...state,status:'lobby'},leave=confirmationIntent(lobby,'leave');assert.equal(confirmationProblem(leave,lobby),'');assert.notEqual(confirmationProblem(leave,state),'');
+  assert.match(confirmationDetails(drawing,'drop',null,esc),/20 penalty points/);assert.match(confirmationDetails(lobby,'leave',null,esc),/other joined tables remain/);
+});
