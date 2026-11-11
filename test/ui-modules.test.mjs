@@ -332,3 +332,26 @@ test('last-deal browsing exposes only recorded history and keeps historical tota
   assert.match(latest,/&lt;Alice>/);assert.match(latest,/id="last-deal-newer" data-deal-round="" disabled/);
   assert.match(latest,/Showing the latest completed round/);
 });
+
+test('account forms expose keyboard tabs and password controls without rendering secrets',async()=>{
+  const {accountValidation}=await import('../public/ui/account.js');
+  const register=accountFormMarkup(true),login=accountFormMarkup(false);
+  assert.match(register,/id="account-register-tab"[^>]*tabindex="0"/);
+  assert.match(login,/id="account-login-tab"[^>]*tabindex="0"/);
+  assert.match(register,/role="tabpanel" aria-labelledby="account-register-tab"/);
+  assert.match(register,/data-password-toggle="account-confirm"/);
+  assert.doesNotMatch(login,/account-confirm|Passwords match/);
+  assert.match(login,/id="auth-error"[^>]*role="alert"/);
+  assert.equal(accountValidation({password:'long-secret-123',confirmPassword:'long-secret-123'},true),null);
+  assert.equal(accountValidation({password:'long-secret-123',confirmPassword:'different-123'},true).field,'account-confirm');
+  assert.equal(accountValidation({password:'🂡'.repeat(33)},false).field,'account-password');
+  assert.equal(accountValidation({password:'a'.repeat(128)},false),null);
+});
+
+test('invite codes accept same-site links and reject unrelated or malformed URLs',async()=>{
+  const {inviteCode}=await import('../public/ui/invite.js');
+  const origin='https://rummy.example';
+  assert.equal(inviteCode(' abcdef123456 ',origin),'ABCDEF123456');
+  assert.equal(inviteCode(`${origin}/?room=abcdef123456&password=ignored`,origin),'ABCDEF123456');
+  for(const value of ['', 'short','abcdef12345g','https://other.example/?room=abcdef123456',`${origin}/other?room=abcdef123456`,'javascript:alert(1)','https://user:secret@rummy.example/?room=abcdef123456','//rummy.example/?room=abcdef123456']) assert.equal(inviteCode(value,origin),'',value);
+});

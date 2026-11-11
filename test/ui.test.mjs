@@ -1504,3 +1504,82 @@ test('Last Deal resets to the selected table history and falls back when a round
   assert.match(await page.locator('.last-deal-summary').textContent(),/Second table/);
   assert.equal(requests.length,0);assert.deepEqual(errors,[]);
 });
+
+async function authFixture(t,viewport={width:390,height:844}) {
+  const browser=await chromium.launch({...(process.env.CHROMIUM_PATH?{executablePath:process.env.CHROMIUM_PATH}:{})});t.after(()=>browser.close());
+  const page=await browser.newPage({viewport});const errors=[],requests=[];page.on('pageerror',error=>errors.push(error.message));
+  let account=null,allow=false,hold=false,release;
+  await page.route('http://rummy.test/**',async route=>{
+    const path=new URL(route.request().url()).pathname;
+    if(path==='/api/session')return route.fulfill({json:{csrf:'test',rooms:[],account}});
+    if(path==='/api/tables')return route.fulfill({json:{tables:[],tableLimit:3,serverTime:Date.now(),active:null}});
+    if(['/api/register','/api/login'].includes(path)){
+      requests.push({path,data:route.request().postDataJSON()});
+      if(hold)await new Promise(resolve=>{release=resolve;});
+      if(!allow)return route.fulfill({status:400,json:{error:path==='/api/login'?'Incorrect username or password.':'That username is taken. Choose another.'}});
+      account={name:'Player',username:'player_test',points:10000};return route.fulfill({json:{csrf:'test',rooms:[],account}});
+    }
+    if(path.startsWith('/api/'))return route.fulfill({status:404,json:{error:'Not found.'}});
+    const file=path==='/'?'index.html':path.slice(1);
+    try{return route.fulfill({body:await readFile(resolve('public',file)),contentType:file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':file.endsWith('.svg')?'image/svg+xml':file.endsWith('.png')?'image/png':'text/html'});}catch{return route.fulfill({status:404});}
+  });
+  await page.goto('http://rummy.test/');await page.locator('#auth-form').waitFor();
+  return {page,requests,errors,allow:()=>{allow=true;},hold:()=>{hold=true;},release:()=>{hold=false;release?.();}};
+}
+
+for(const viewport of [{width:390,height:844},{width:768,height:1024},{width:1920,height:1080}]){
+  test(`Create Account validates confirmation and clears secrets after signup at ${viewport.width}px`,async t=>{
+    const f=await authFixture(t,viewport);const {page,requests,errors}=f;
+    await page.locator('#account-name').fill('Player');await page.locator('#account-username').fill('player_test');
+    await page.locator('#account-password').fill('safe-password-123');await page.locator('#account-confirm').fill('wrong-password-123');
+    await page.locator('#auth-form [type="submit"]').click();
+    assert.match(await page.locator('#auth-error').textContent(),/do not match/);assert.equal(requests.length,0);
+    assert.equal(await page.evaluate(()=>document.activeElement.id),'account-confirm');
+    await page.locator('[data-password-toggle="account-password"]').click();
+    assert.equal(await page.locator('#account-password').getAttribute('type'),'text');
+    await page.locator('#account-confirm').fill('safe-password-123');
+    assert.match(await page.locator('#account-password-match').textContent(),/Passwords match/);
+    await waitingScreenshot(page,`create-account-${viewport.width}`);
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+    f.allow();await page.locator('#auth-form [type="submit"]').click();await page.locator('.home-page').waitFor();
+    assert.equal(requests.length,1);assert.equal(requests[0].path,'/api/register');assert.equal('confirmPassword' in requests[0].data,false);
+    assert.equal(await page.locator('#account-password').count(),0);
+    assert.equal(await page.evaluate(()=>JSON.stringify({...localStorage,...sessionStorage}).includes('safe-password-123')),false);assert.deepEqual(errors,[]);
+  });
+}
+
+test('account tabs use arrows, keep identity and clear passwords before sign in',async t=>{
+  const f=await authFixture(t);const {page,requests,errors}=f;
+  await page.locator('#account-name').fill('My name');await page.locator('#account-username').fill('player_test');await page.locator('#account-password').fill('safe-password-123');
+  await page.locator('[data-auth-mode="register"]').focus();await page.keyboard.press('ArrowRight');
+  assert.equal(await page.locator('[data-auth-mode="login"]').getAttribute('aria-selected'),'true');
+  assert.equal(await page.locator('#account-username').inputValue(),'player_test');assert.equal(await page.locator('#account-password').inputValue(),'');
+  await page.keyboard.press('Home');assert.equal(await page.locator('#account-name').inputValue(),'My name');
+  await page.keyboard.press('End');await page.locator('#account-password').fill('safe-password-123');
+  const pendingLogin=page.waitForRequest('**/api/login');
+  f.hold();await page.locator('#auth-form [type="submit"]').click();await pendingLogin;
+  await page.waitForFunction(()=>document.querySelector('#auth-form').getAttribute('aria-busy')==='true');
+  assert.equal(await page.locator('[data-auth-mode="register"]').isDisabled(),true);assert.equal(await page.locator('#account-password').isDisabled(),true);
+  assert.equal(requests.length,1);f.release();
+  await page.waitForFunction(()=>document.querySelector('#auth-error').textContent.includes('Incorrect username'));
+  assert.equal(await page.locator('#account-password').inputValue(),'safe-password-123');assert.equal(await page.locator('#account-password').getAttribute('type'),'password');
+  assert.equal(await page.evaluate(()=>document.activeElement.id),'auth-error');
+  await waitingScreenshot(page,'sign-in-inline-error-mobile');
+  f.allow();await page.locator('#auth-form [type="submit"]').click();await page.locator('.home-page').waitFor();
+  assert.deepEqual(requests.map(request=>request.path),['/api/login','/api/login']);assert.deepEqual(errors,[]);
+});
+
+test('Join Friends accepts full invite links and rejects unrelated links before sending',async t=>{
+  const {page,rooms,errors}=await fixture(t,{width:390,height:844});const joins=[];
+  page.on('request',request=>{if(new URL(request.url()).pathname==='/api/join')joins.push(request.postDataJSON());});
+  await page.locator('[data-add-table]').click();await page.locator('[data-table-mode="join"]').click();
+  await page.locator('#new-table-code').fill('https://other.test/?room=DDDDDD123456');await page.locator('#table-entry-submit').click();
+  assert.equal(joins.length,0);assert.match(await page.locator('#table-entry-error').textContent(),/from this site/);
+  await page.locator('#new-table-code').fill('http://rummy.test/?room=dddddd123456');await page.locator('#new-table-password').fill('wrong');
+  await page.locator('#table-entry-submit').click();await page.waitForFunction(()=>document.querySelector('#table-entry-error').textContent.includes('Incorrect'));
+  assert.equal(await page.locator('#new-table-code').inputValue(),'DDDDDD123456');assert.equal(rooms.size,1);
+  await waitingScreenshot(page,'join-friends-inline-error-mobile');
+  await page.locator('#new-table-password').fill('friends');await page.locator('#table-entry-submit').click();await page.waitForURL('**/?room=DDDDDD123456');
+  assert.equal(joins.length,2);assert.equal(joins[1].code,'DDDDDD123456');assert.equal('accessKey' in joins[1],false);
+  assert.equal(await page.locator('#new-table-password').inputValue(),'');assert.equal(rooms.size,2);assert.deepEqual(errors,[]);
+});

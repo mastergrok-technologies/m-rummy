@@ -6,7 +6,8 @@ The browser entry point is `public/app.js`. It owns session state, networking, t
 | --- | --- | --- |
 | `public/app.js` | State, requests, polling, event handlers, view orchestration | UI modules, board-state, tutorial |
 | `public/ui/home.js` | Private-table lobby, Points/Joined navigation, live membership cards and empty state | Caller-provided account, memberships and formatting helpers |
-| `public/ui/account.js` | Registration and sign-in form markup | None |
+| `public/ui/account.js` | Registration/sign-in form markup and password confirmation/byte-limit feedback | None |
+| `public/ui/invite.js` | Same-site invite link/code normalization without network access | URL API |
 | `public/ui/tables.js` | Joined-table navigation and multi-table picker markup | Caller-provided data and HTML escape function |
 | `public/ui/account-pages.js` | Change Username, Suggestion Box and receipt views | Caller-provided account/draft/receipt and escaping helper |
 | `public/ui/avatars.js` | Strict IDs and paths for the five bundled account avatars | None |
