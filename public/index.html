@@ -13,14 +13,16 @@
   <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/design-system.css">
   <script type="module" src="/app.js"></script>
 </head>
 <body class="is-booting">
+  <a class="skip-link" href="#app">Skip to main content</a>
   <header class="site-header">
     <a class="brand" href="/" aria-label="M Rummy home"><span class="brand-mark">♣</span><span>M<span class="brand-light"> RUMMY</span></span></a>
     <div class="header-right"><span class="free-pill"><span></span> Just for the fun of it</span><button class="profile-button" id="profile-button" hidden></button><button class="text-button" id="rules-button">How to play <span aria-hidden="true">↗</span></button></div>
   </header>
-  <main id="app" aria-busy="true"><section class="splash-screen" role="status" aria-label="Loading M Rummy"><img class="splash-art" src="/assets/figma/splash-rummy.png" alt="" width="640" height="640" fetchpriority="high"><span class="visually-hidden">Setting your table…</span></section></main>
+  <main id="app" tabindex="-1" aria-busy="true"><section class="splash-screen" role="status" aria-label="Loading M Rummy"><img class="splash-art" src="/assets/figma/splash-rummy.png" alt="" width="640" height="640" fetchpriority="high"><span class="visually-hidden">Setting your table…</span></section></main>
   <footer class="site-footer"><span>A little friendly competition. A lot of good company.</span><button id="mobile-button" class="footer-button">Add to your home screen ↗</button><span>13-card Indian rummy · No money involved</span></footer>
   <div id="toast" role="status" aria-live="polite"></div>
   <dialog id="rules-dialog" aria-labelledby="rules-dialog-title">

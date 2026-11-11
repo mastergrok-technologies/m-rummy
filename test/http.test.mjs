@@ -29,6 +29,7 @@ test('HTTP multiplayer, isolation, CSRF, competing moves, reconnect, and durable
   async function stop() { if (processPHP.exitCode === null) { processPHP.kill(); await new Promise(r => processPHP.once('exit', r)); } }
   t.after(async () => { await stop(); await rm(data, { recursive: true, force: true }); });
   await start();
+  const theme = await fetch(`${base}/design-system.css`); assert.equal(theme.status,200); assert.match(theme.headers.get('content-type'),/css/); assert.equal(await theme.text(),await readFile('public/design-system.css','utf8'));
   for (const file of ['offline.js', 'app.js', 'board-state.js', 'tutorial.js', 'ui/gameplay.js', 'ui/waiting-room.js', 'ui/panels/chat.js', 'ui/profile.js', 'ui/avatars.js', 'ui/account-pages.js', 'ui/round-results.js', 'ui/tutorial.js', 'ui/invite.js', 'ui/table-flows.js']) {
     const module = await fetch(`${base}/${file}`); assert.equal(module.status, 200, `${file} must be served by the PHP router`);
     assert.match(module.headers.get('content-type'), /javascript/);

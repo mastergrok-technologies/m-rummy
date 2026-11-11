@@ -407,8 +407,28 @@ test('offline service worker caches recovery assets but never API responses or h
   const handlers={},added=[],matched=[];
   runInNewContext(await readFile(new URL('../public/sw.js',import.meta.url),'utf8'),{URL,self:{location:{origin:'https://rummy.test'},addEventListener:(name,callback)=>{handlers[name]=callback;}},caches:{open:async()=>({addAll:async paths=>added.push(...paths)}),match:async path=>{matched.push(path);return 'offline';}},fetch:async()=>{throw new Error('offline');}});
   let ready;handlers.install({waitUntil:promise=>{ready=promise;}});await ready;
-  assert.deepEqual(added,['/offline.html','/offline.js','/style.css']);
+  assert.deepEqual(added,['/offline.html','/offline.js','/style.css','/design-system.css']);
   let response;handlers.fetch({request:{method:'GET',mode:'navigate',url:'https://rummy.test/?room=ABCDEF123456'},respondWith:promise=>{response=promise;}});assert.equal(await response,'offline');
   for(const [method,url] of [['GET','https://rummy.test/api/tables'],['POST','https://rummy.test/api/action'],['GET','https://other.test/offline.js']])handlers.fetch({request:{method,mode:'cors',url},respondWith:()=>{assert.fail('Non-recovery request must use the network');}});
   assert.deepEqual(matched,['/offline.html']);
+});
+
+test('shared design text and action tokens meet normal-text contrast requirements',async()=>{
+  const {readFile}=await import('node:fs/promises');
+  const css=await readFile(new URL('../public/design-system.css',import.meta.url),'utf8');
+  const tokens=Object.fromEntries([...css.matchAll(/(--ui-[a-z-]+):\s*(#[0-9a-f]{6});/g)].map(match=>[match[1],match[2]]));
+  const luminance=hex=>{const rgb=hex.slice(1).match(/../g).map(value=>parseInt(value,16)/255).map(value=>value<=.04045?value/12.92:((value+.055)/1.055)**2.4);return rgb[0]*.2126+rgb[1]*.7152+rgb[2]*.0722;};
+  const contrast=(a,b)=>{const values=[luminance(a),luminance(b)].sort((x,y)=>y-x);return (values[0]+.05)/(values[1]+.05);};
+  for(const [fg,bg] of [['--ui-text','--ui-surface'],['--ui-muted','--ui-surface'],['--ui-muted','--ui-surface-soft'],['--ui-on-primary','--ui-primary'],['--ui-danger','--ui-danger-soft'],['--ui-disabled-text','--ui-disabled']])assert.ok(contrast(tokens[fg],tokens[bg])>=4.5,`${fg} on ${bg}`);
+  assert.ok(contrast(tokens['--ui-focus'],tokens['--ui-surface'])>=3);
+});
+
+test('main and offline entry points load the shared design after screen geometry',async()=>{
+  const {readFile}=await import('node:fs/promises');
+  for(const page of ['index.html','offline.html']){
+    const html=await readFile(new URL(`../public/${page}`,import.meta.url),'utf8');
+    assert.ok(html.indexOf('href="/design-system.css"')>html.indexOf('href="/style.css"'));
+  }
+  const html=await readFile(new URL('../public/index.html',import.meta.url),'utf8');
+  assert.match(html,/class="skip-link" href="#app"/);assert.match(html,/<main id="app" tabindex="-1"/);
 });

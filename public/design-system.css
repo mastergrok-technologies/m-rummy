@@ -1,0 +1,216 @@
+/* Application foundations. Load after legacy screen geometry in style.css.
+   All new shared presentation changes belong here; card/table geometry stays there. */
+:root {
+  --ui-canvas: #f4f6f3;
+  --ui-surface: #ffffff;
+  --ui-surface-soft: #edf3ef;
+  --ui-text: #18382b;
+  --ui-muted: #52645a;
+  --ui-border: #ccd8cf;
+  --ui-primary: #17623f;
+  --ui-primary-hover: #104b30;
+  --ui-on-primary: #ffffff;
+  --ui-focus: #087b69;
+  --ui-danger: #9e3026;
+  --ui-danger-soft: #fff0ed;
+  --ui-disabled: #e5eae6;
+  --ui-disabled-text: #5a665e;
+  --ui-font: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --ui-radius: 12px;
+  --ui-radius-small: 8px;
+  --ui-space-1: 4px;
+  --ui-space-2: 8px;
+  --ui-space-3: 12px;
+  --ui-space-4: 16px;
+  --ui-space-6: 24px;
+  --ui-space-8: 32px;
+  --ui-control: 44px;
+  --ui-shadow: 0 18px 64px #102c2026;
+  --paper: var(--ui-canvas);
+  --ink: var(--ui-text);
+  --muted: var(--ui-muted);
+  --green: var(--ui-primary);
+  --line: var(--ui-border);
+  --sans: var(--ui-font);
+  --serif: var(--ui-font);
+}
+body { font-family: var(--ui-font); color: var(--ui-text); line-height: 1.6; }
+button, input, select, textarea { font-family: var(--ui-font); }
+:root [hidden] { display: none !important; }
+:where(h1,h2,h3) { text-wrap: balance; }
+:where(p,dd,small,label) { overflow-wrap: anywhere; }
+:where(button,a,input,select,textarea,summary,[tabindex]):focus-visible {
+  outline: 3px solid var(--ui-focus); outline-offset: 3px;
+}
+.skip-link { position: fixed; z-index: 100; left: 16px; top: 12px; padding: 12px 20px; border-radius: var(--ui-radius-small); background: var(--ui-primary); color: white; transform: translateY(-180%); }
+.skip-link:focus { transform: none; }
+.site-header { height: auto; min-height: 88px; gap: 16px; padding-block: 16px; }
+.site-header .brand { font-size: 22px; letter-spacing: -.5px; }
+.site-header .brand-light { font-size: inherit; letter-spacing: 1px; }
+.site-header .brand-mark { background: var(--ui-primary); }
+.site-header .header-right { gap: 16px; flex-wrap: wrap; justify-content: flex-end; }
+.site-header .text-button, .site-footer button { min-height: var(--ui-control); }
+.site-header .free-pill, .site-footer, .entry-note, .hero-sub, .hero-note { color: var(--ui-muted); }
+.site-header .profile-button { min-height: var(--ui-control); border-color: var(--ui-border); background: var(--ui-surface); color: var(--ui-text); border-radius: var(--ui-radius-small); }
+.room-heading h1 { font-family: var(--ui-font); font-weight: 650; font-size: clamp(24px,3vw,32px); letter-spacing: -.6px; }
+.hero-copy h1 { font-family: var(--ui-font); font-size: clamp(36px,5vw,64px); font-weight: 650; letter-spacing: -1.6px; line-height: 1.12; }
+.hero-copy h1 em { color: var(--ui-primary); font-style: normal; font-weight: inherit; }
+.entry-card, .side-card, .home-table, .home-guide { border-radius: var(--ui-radius); border-color: var(--ui-border); background: var(--ui-surface); }
+.button, .icon-button, .footer-button, .text-button { min-height: var(--ui-control); border-radius: var(--ui-radius-small); }
+.button { font-size: 14px; font-weight: 650; gap: 8px; padding: 11px 16px; line-height: 1.4; }
+.button.primary, .home-create, .home-balance { background: var(--ui-primary); color: var(--ui-on-primary); border-color: var(--ui-primary); }
+.button.primary:hover:not(:disabled), .home-create:hover:not(:disabled) { background: var(--ui-primary-hover); }
+.button.secondary, .home-join { background: var(--ui-surface); color: var(--ui-text); border-color: var(--ui-border); }
+.button.secondary:hover:not(:disabled), .home-join:hover:not(:disabled) { background: var(--ui-surface-soft); }
+.icon-button { min-width: var(--ui-control); height: var(--ui-control); border-color: var(--ui-border); }
+:where(input:not([type=checkbox]):not([type=radio]),textarea,select) {
+  font-size: 16px; line-height: 1.5; min-height: var(--ui-control); background: var(--ui-surface); color: var(--ui-text); border: 1px solid var(--ui-border); border-radius: var(--ui-radius-small);
+}
+:where(input,textarea)::placeholder { color: var(--ui-muted); opacity: 1; }
+input[type=checkbox], input[type=radio] { accent-color: var(--ui-primary); }
+label, .account-help, .entry-note { font-size: 13px; line-height: 1.6; }
+.tabs { gap: 16px; }
+.tabs [role=tab] { min-height: var(--ui-control); color: var(--ui-muted); font-size: 14px; }
+.tabs [aria-selected=true] { color: var(--ui-primary); border-color: var(--ui-primary); }
+.password-field button { color: var(--ui-primary); background: var(--ui-surface-soft); border-color: var(--ui-border); }
+.password-field button[aria-pressed=true] { color: white; background: var(--ui-primary); }
+/* Lobby and navigation share the same palette as account and utility views. */
+.home-page { --home-ink: var(--ui-text); --home-muted: var(--ui-muted); --home-green: var(--ui-primary); }
+.home-page .home-intro, #profile-dialog .points-total { background: var(--ui-primary); color: white; border-radius: var(--ui-radius); }
+.home-intro :is(.home-kicker,p,.home-free), #profile-dialog .points-total :is(span,small) { color: #e5f1e9; }
+.home-tabs { border-color: var(--ui-border); background: var(--ui-surface); }
+.home-tabs button[aria-current=page], .home-tabs button>span { background: var(--ui-surface-soft); color: var(--ui-primary); }
+.home-filters button, .profile-history-filters button, .hand-filters button, .info-topic-links button, .tutorial-topics button { min-height: var(--ui-control); border-color: var(--ui-border); color: var(--ui-text); background: var(--ui-surface); }
+.home-filters button[aria-current=page], .profile-history-filters button[aria-current=page], .hand-filters button[aria-pressed=true], .tutorial-topics button[aria-current=step] { color: white; background: var(--ui-primary); border-color: var(--ui-primary); }
+.board-toolbar { gap: 8px; }
+.board-toolbar .button, .table-tab { min-height: var(--ui-control); }
+.room-page:not(.gameplay-page) .board-toolbar .button { color: var(--ui-text); background: var(--ui-surface); border-color: var(--ui-border); }
+/* One utility-dialog surface. Distinct widths and chat scrolling remain intact. */
+:root dialog,
+#game-dialog[data-panel],
+#tutorial-dialog[data-step],
+#profile-dialog,
+#account-pages-dialog,
+#confirm-dialog,
+#invite-dialog,
+#tables-dialog,
+#rules-dialog,
+#mobile-dialog {
+  background: var(--ui-surface); color: var(--ui-text); border: 1px solid var(--ui-border); border-radius: 16px;
+  padding: var(--ui-space-6); box-shadow: var(--ui-shadow); font-family: var(--ui-font); max-height: calc(100dvh - 32px);
+  scrollbar-color: #82958a var(--ui-surface-soft); overscroll-behavior: contain;
+}
+:root dialog::backdrop { background: #10271ee0; backdrop-filter: blur(3px); }
+:root dialog .dialog-head { gap: 16px; align-items: center; margin-bottom: 16px; }
+:root dialog .dialog-head .eyebrow { font: 700 11px/1.5 var(--ui-font); letter-spacing: 1px; color: var(--ui-muted); }
+#game-dialog[data-panel] .dialog-head [data-close], :root dialog .dialog-head .icon-button {
+  width: var(--ui-control); height: var(--ui-control); min-width: var(--ui-control); flex: 0 0 var(--ui-control);
+  border: 1px solid var(--ui-border); border-radius: var(--ui-radius-small); background: var(--ui-surface-soft); color: var(--ui-text); font: 400 26px/1 var(--ui-font);
+}
+#game-dialog[data-panel] #game-panel-title,
+#tutorial-dialog[data-step] #tutorial-title,
+#account-pages-dialog #account-page-title,
+#profile-dialog .profile-identity h2,
+:root dialog>h2 {
+  font: 650 clamp(23px,3vw,30px)/1.25 var(--ui-font); letter-spacing: -.5px; color: var(--ui-text);
+  background: none; text-indent: 0; width: auto; height: auto; min-height: 0; padding: 0; margin: 0 0 20px;
+}
+#game-dialog[data-panel] :is(.button,.text-button), :root dialog .button { min-height: var(--ui-control); font-size: 14px; }
+#game-dialog[data-panel] .button.primary, :root dialog .button.primary { background: var(--ui-primary); color: white; border-color: var(--ui-primary); }
+#game-dialog[data-panel] .button.secondary, :root dialog .button.secondary { background: var(--ui-surface); color: var(--ui-text); border-color: var(--ui-border); }
+#game-dialog[data-panel] :is(input:not([type=checkbox]):not([type=radio]),select,textarea),
+#account-pages-dialog :is(input,select,textarea), :root dialog #invite-url, :root dialog #invite-code-value {
+  background: var(--ui-surface); color: var(--ui-text); border-color: var(--ui-border); border-radius: var(--ui-radius-small); font: 400 16px/1.5 var(--ui-font);
+}
+#game-dialog[data-panel] :is(.hand-view-summary,.hand-view-note,.hand-view-empty,.hand-view-footer>span,.chat-scope,.chat-modal-privacy,.chat-empty p,.chat-compose-status p,.chat-compose-status span,.settings-intro,.settings-preference-hint,.settings-accessibility-note,.settings-preferences legend,.settings-room-label,.settings-option small,.settings-option-action,.settings-unavailable-label,#settings-save-status) { color: var(--ui-muted); }
+#game-dialog[data-panel] :is(.hand-view-group-heading h3,.chat-suggestion-heading h3,.chat-empty strong,.settings-option strong,.settings-preference strong,.best-declaration-panel h3,.declaration-retry-guidance h4) { color: var(--ui-text); font-family: var(--ui-font); }
+#game-dialog[data-panel] :is(.hand-view-groups section,.settings-option,.best-declaration-panel,.declaration-retry-guidance,.info-overview,.standings-footer) { background: var(--ui-surface-soft); border-color: var(--ui-border); color: var(--ui-text); border-radius: var(--ui-radius); }
+#game-dialog[data-panel] :is(.hand-view-group-heading>span,.settings-preference small,.best-declaration-panel p,.best-declaration-panel li,.best-declaration-note) { color: var(--ui-muted); }
+#game-dialog[data-panel] :is(.hand-view-footer,.settings-preference) { border-color: var(--ui-border); }
+#game-dialog[data-panel] .hand-view-footer .button, #game-dialog[data-panel] .standings-footer .button { background: var(--ui-primary); color: white; border-color: var(--ui-primary); }
+#game-dialog[data-panel] .settings-option-icon { background: #dcece1; }
+#game-dialog[data-panel] .settings-option { color: var(--ui-text); }
+#game-dialog[data-panel] .settings-option:hover:not(:disabled) { background: #e1eee5; border-color: var(--ui-primary); }
+#game-dialog[data-panel] .settings-unavailable-label { border-color: var(--ui-border); }
+/* Chat content has the same neutral surface, with green composer actions. */
+#game-dialog[data-panel=chat] .messages { background: var(--ui-surface-soft); border-color: var(--ui-border); }
+#game-dialog[data-panel=chat] .message { background: var(--ui-surface); border: 1px solid var(--ui-border); border-radius: var(--ui-radius-small); }
+#game-dialog[data-panel=chat] .message p { color: var(--ui-text); }
+#game-dialog[data-panel=chat] :is(.message>span,.message time,.chat-suggestion-heading>span,#dialog-chat-status,#dialog-chat-count) { color: var(--ui-muted); }
+#game-dialog[data-panel=chat] :is(.chat-quick-replies button,.chat-emoji-grid button) { background: var(--ui-surface-soft); color: var(--ui-text); border-color: var(--ui-border); border-radius: var(--ui-radius-small); }
+#game-dialog[data-panel=chat] .chat-form { border: 1px solid var(--ui-border); border-radius: var(--ui-radius); background: var(--ui-surface); }
+#game-dialog[data-panel=chat] .chat-form button { background: var(--ui-primary); border-radius: var(--ui-radius-small); }
+#game-dialog[data-panel=chat] .chat-form input::placeholder { color: var(--ui-muted); }
+#game-dialog[data-panel=chat] .chat-form button:hover:not(:disabled) { background: var(--ui-primary-hover); }
+/* Shared result, ledger, information and feedback surfaces. */
+:root :is(.personal-round,.last-deal-browser,.declaration-context,.table-setup-summary,.invite-room-facts,.tutorial-practice,.home-attention) { background: var(--ui-surface-soft); color: var(--ui-text); border: 1px solid var(--ui-border); border-radius: var(--ui-radius); }
+:root :is(.personal-round,.last-deal-browser,.declaration-context) :is(strong,h3), #profile-dialog .profile-stats strong { color: var(--ui-text); }
+:root :is(.personal-round,.last-deal-browser) :is(small,p>span), #profile-dialog :is(.profile-handle,.profile-explainer,.profile-stats span,.entry-note,.history-pages) { color: var(--ui-muted); }
+#profile-dialog .profile-avatar-options label:has(input:checked) { border-color: var(--ui-primary); background: var(--ui-surface-soft); }
+#profile-dialog :is(.profile-options button,.profile-event-detail,.profile-event summary) { color: var(--ui-text); border-color: var(--ui-border); }
+#profile-dialog :is(.event-amount,.profile-event summary strong) { color: var(--ui-primary); }
+:root .score-table { color: var(--ui-text); }
+:root .score-table :is(th,td) { border-color: var(--ui-border); }
+:root .score-table thead th { color: var(--ui-muted); background: var(--ui-surface-soft); font-size: 12px; }
+:root .score-table .winner-row, #game-dialog[data-panel=standings] .standing-self { background: #e1eee5; }
+:root :is(.form-feedback,#table-entry-error:not(:empty),#confirm-status:not(:empty),.declaration-feedback) { color: var(--ui-danger); background: var(--ui-danger-soft); border-radius: var(--ui-radius-small); }
+:root .connection-notice { background: var(--ui-surface); color: var(--ui-text); border: 1px solid var(--ui-border); border-radius: var(--ui-radius); box-shadow: var(--ui-shadow); }
+:root .connection-notice h2 { color: var(--ui-text); font-family: var(--ui-font); }
+#toast { background: var(--ui-primary); color: white; font-size: 14px; line-height: 1.6; border-radius: var(--ui-radius-small); max-width: min(560px,calc(100vw - 32px)); overflow-wrap: anywhere; }
+#toast.error { background: var(--ui-danger); }
+/* The table retains its dark playing surface; utility navigation remains recognizable. */
+.gameplay-page .board-toolbar .button { border-color: #98b7a5; color: #fff; background: #174831; }
+.gameplay-page .hand-footer .button.primary { background: #d6efdd; color: #153b28; border-color: #d6efdd; }
+.gameplay-page .hand-footer .button.secondary { background: #1d4635; color: white; border-color: #98b7a5; }
+/* Explicit states, consistent keyboard focus, and touch-safe controls. */
+:root dialog button:disabled:not(.card), .home-page button:disabled, #auth-form button:disabled { opacity: 1; background: var(--ui-disabled); border-color: var(--ui-border); color: var(--ui-disabled-text); cursor: not-allowed; }
+#game-dialog[data-panel] :focus-visible, #tutorial-dialog[data-step] :focus-visible, #profile-dialog :focus-visible, #account-pages-dialog :focus-visible, .home-page :focus-visible { outline: 3px solid var(--ui-focus); outline-offset: 3px; }
+@media (max-width: 700px) {
+  .site-header { padding: 12px 16px; min-height: 76px; }
+  .site-header .header-right { gap: 8px; }
+  .site-header .free-pill { display: none; }
+  .site-header .brand { font-size: 18px; }
+  .site-header .brand-mark { width: 36px; height: 40px; font-size: 28px; }
+  .home-page { padding-inline: 16px; }
+  .room-page { padding-inline: 16px; }
+  .room-heading { flex-wrap: wrap; }
+  .room-heading h1 { flex-wrap: wrap; }
+  .home-heading { align-items: flex-start; }
+  .board-toolbar { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); }
+  .board-toolbar .button { white-space: normal; font-size: 12px; padding: 8px; }
+  :root dialog, #game-dialog[data-panel], #tutorial-dialog[data-step], #profile-dialog, #account-pages-dialog, #confirm-dialog, #invite-dialog, #tables-dialog, #rules-dialog, #mobile-dialog { padding: 20px 16px; border-radius: 16px; max-height: calc(100dvh - 24px); }
+  .button-row .button { white-space: normal; }
+  :root input:not([type=checkbox]):not([type=radio]), :root select, :root textarea { font-size: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
+/* Content-sized overlays use a compact/standard/wide scale. */
+#confirm-dialog, #invite-dialog, #tables-dialog, #mobile-dialog, #account-pages-dialog { width: min(520px,calc(100vw - 32px)); }
+#rules-dialog, #tutorial-dialog[data-step], #profile-dialog, #game-dialog[data-panel] { width: min(720px,calc(100vw - 32px)); }
+#game-dialog[data-panel=settings], #game-dialog[data-panel=lastDeal] { width: min(520px,calc(100vw - 32px)); }
+#game-dialog[data-panel=information], #game-dialog[data-panel=standings] { width: min(1000px,calc(100vw - 32px)); }
+#game-dialog[data-panel=chat] { width: min(480px,calc(100vw - 32px)); }
+#auth-form input { font-size: 16px; }
+#game-dialog[data-panel] .last-deal-note, #game-dialog[data-panel] .last-deal-facts span { color: var(--ui-muted); }
+#game-dialog[data-panel] .last-deal-summary, #game-dialog[data-panel] .last-deal-facts strong { color: var(--ui-text); }
+#tutorial-dialog[data-step] :is(.tutorial-welcome,.tutorial-pure-intro,.tutorial-joker-intro,.tutorial-set-intro,.tutorial-scoring-intro,.tutorial-declare-intro) { background: var(--ui-primary); border-radius: var(--ui-radius); color: white; }
+#tutorial-dialog[data-step] :is(.tutorial-welcome,.tutorial-pure-intro,.tutorial-joker-intro,.tutorial-set-intro,.tutorial-scoring-intro,.tutorial-declare-intro) :is(p,span,strong,small,b) { color: white; }
+#tutorial-dialog[data-step] .tutorial-scoring-breakdown>span { background: #ffffff1f; }
+#tutorial-dialog[data-step] .tutorial-note { background: var(--ui-surface-soft); border-color: var(--ui-border); color: var(--ui-text); }
+.quiet-motion *, .quiet-motion *::before, .quiet-motion *::after { scroll-behavior: auto !important; animation: none !important; transition: none !important; }
+#game-dialog[data-panel] .dialog-head { background: transparent; padding: 0; border-radius: 0; }
+#game-dialog[data-panel] #game-panel-title { display: block; text-align: left; }
+#game-dialog[data-panel=declaration] .invalid-declaration-state { background: var(--ui-danger-soft); color: var(--ui-danger); border-color: #dfb4ad; border-radius: var(--ui-radius); }
+#game-dialog[data-panel=declaration] .invalid-declaration-state :is(h3,.eyebrow,.declaration-feedback) { color: var(--ui-danger); }
+#game-dialog[data-panel] .declaration-retry-guidance p { color: var(--ui-muted); }
+#game-dialog[data-panel] .best-declaration-panel ol { background: var(--ui-surface); border-color: var(--ui-border); color: var(--ui-text); }
+@media (max-height: 700px) {
+  #game-dialog[data-panel=chat] #game-panel-content { overflow-y: auto; overscroll-behavior: contain; }
+  #game-dialog[data-panel=chat] .messages { flex: 0 0 160px; min-height: 160px; }
+}
+#game-dialog[data-panel=chat] #dialog-chat-input { color: var(--ui-text); background: var(--ui-surface); }
+#game-dialog[data-panel=chat] #dialog-chat-count.chat-count-warning { color: #8a4f06; }
+#game-dialog[data-panel=lastDeal] .score-table, #game-dialog[data-panel=lastDeal] .last-deal-summary strong { color: var(--ui-text); }
+#game-dialog[data-panel=settings] .settings-preference>span { color: var(--ui-text); }
+#game-dialog[data-panel=standings] .standings-footer span { color: var(--ui-muted); }
