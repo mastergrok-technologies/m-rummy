@@ -8,5 +8,5 @@ export function joinedTablesMarkup(tables, activeCode, tableLimit, escapeHtml) {
 export function tablePickerMarkup(count, limit, connectionBanner) {
   const tables = { length: count }, tableLimit = limit;
   const connectionNotice = () => connectionBanner;
-  return `<section class="multi-table-picker" aria-labelledby="multi-table-title"><span class="eyebrow">MULTIPLE GAME FEATURE</span><h1 id="multi-table-title">Choose your table</h1><p>You are seated at ${tables.length} of ${tableLimit} available tables. Your other rounds keep running while you switch. Server timers do not pause.</p><div id="table-switcher"></div><p class="multi-table-hint">Tables marked “Your turn” need your attention. Select a table to return to play.</p></section>${connectionNotice()}`;
+  return `<section class="multi-table-picker" aria-labelledby="multi-table-title"><span class="eyebrow">Multiple tables</span><h1 id="multi-table-title">Choose your table</h1><p>You are seated at ${tables.length} of ${tableLimit} available tables. Your other rounds keep running while you switch. Server timers do not pause.</p><div id="table-switcher"></div><p class="multi-table-hint">Tables marked “Your turn” need your attention. Select a table to return to play.</p></section>${connectionNotice()}`;
 }

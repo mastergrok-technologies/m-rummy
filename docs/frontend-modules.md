@@ -53,4 +53,13 @@ This PR starts the modularization without changing backend routes or deployment 
 
 ## Shared visual foundation
 
-`public/design-system.css` owns cross-screen design tokens, neutral utility surfaces, forms/actions, focus, motion and mobile control sizing. It loads after `style.css`, which retains existing screen/card geometry. See [UI_UX_REVIEW.md](UI_UX_REVIEW.md) for the application audit, implementation scope and browser-validation limits.
+`public/design-system.css` owns tokens (day palette `--ui-*`, night table palette `--night-*`, felt and card colours), the self-hosted fonts in `public/fonts/` (Rozha One for display, Onest for text; SIL OFL licences alongside), base elements and shared controls (buttons, forms, tabs, dialogs, toast). Everything after the tokens is wrapped in `:where()` so it has zero specificity. It still loads after `style.css`, but any screen rule wins without `!important`.
+
+`public/style.css` owns every screen: landing, home, the night-theme table pages (`#app.room-page`), the waiting room, results, hand dock, sidebar and all dialog contents. Home and accounts use the light day theme. Any table page switches the page to the night theme through `body:has(#app.room-page)`. Dialogs always use the day theme.
+
+Responsive behaviour worth knowing before editing:
+- Below 1100px the sidebar moves under the table.
+- While a round is playing (`#app.gameplay-page`) the hand panel sticks to the bottom of the screen at every size, and the turn banner shrinks to one line. Opponent seats are compact chips (a three-column grid on phones) so seats, deck and hand fit together on a 390×844 phone or a 1440×900 laptop.
+- `#table-switcher` is filled just after each table re-render; `renderRoom` restores the page scroll after that, and CSS reserves its height to avoid a visible jump.
+- Below 640px dialogs become bottom sheets.
+- Card size is 72×104 by default and 57×82 at 600px and below; the browser tests assert these sizes.

@@ -474,7 +474,7 @@ for (const [width, height] of [[390, 844], [768, 1024], [1024, 768], [1920, 1080
       const box = await page.locator(`[data-action="${action}"] img`).boundingBox();
       assert.equal(box.width, 18); assert.equal(box.height, 18);
     }
-    assert.match(await page.locator('.felt-table').evaluate(el => getComputedStyle(el, '::before').backgroundImage), /waiting-table.png/);
+    assert.match(await page.locator('.felt-table').evaluate(el => getComputedStyle(el).backgroundImage), /radial-gradient/);
     if (process.env.UI_SCREENSHOT_DIR) {
       await mkdir(process.env.UI_SCREENSHOT_DIR, { recursive: true });
       await page.screenshot({ path: resolve(process.env.UI_SCREENSHOT_DIR, `gameplay-${width}.png`), fullPage: true });
@@ -508,10 +508,9 @@ for (const [width, height] of [[390, 844], [1920, 1080]]) {
     assert.equal(await page.locator('[data-card="card-0"]').getAttribute('aria-pressed'), 'true');
     assert.equal(await page.locator('#chat-input').inputValue(), 'Unsent message');
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
-    for (const [name, desktopSize] of [['connection-lost', 86], ['connection-loading', 56]]) {
+    for (const [name, expectedSize] of [['connection-lost', 44], ['connection-loading', 28]]) {
       const dimensions = await page.locator(`#connection-banner img[src$="${name}.svg"]`).evaluate(el => ({ width: el.offsetWidth, height: el.offsetHeight }));
-      // The lost-connection illustration intentionally shrinks at the mobile breakpoint.
-      const expectedSize = name === 'connection-lost' && width <= 600 ? 52 : desktopSize;
+      // The notice is a compact banner at every width so it never pushes the hand out of view.
       assert.equal(dimensions.width, expectedSize); assert.equal(dimensions.height, expectedSize);
     }
     if (process.env.UI_SCREENSHOT_DIR) {
@@ -581,7 +580,10 @@ for (const [width, height] of [[390, 844], [768, 1024], [1024, 768], [1920, 1080
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     const bounds = await page.locator('#game-dialog').boundingBox();
     assert.ok(bounds.x >= 0 && bounds.y >= 0 && bounds.x + bounds.width <= width + 1 && bounds.y + bounds.height <= height + 1);
-    for (const [asset, size] of [['chat-back', 36], ['chat-emoji', 40], ['chat-send', 40]]) {
+    // Chat closes with the shared × control like every other table panel.
+    const close = await page.getByRole('button', { name: 'Close table panel', exact: true }).boundingBox();
+    assert.equal(close.width, 44); assert.equal(close.height, 44);
+    for (const [asset, size] of [['chat-emoji', 40], ['chat-send', 40]]) {
       const box = await page.locator(`#game-dialog img[src$="${asset}.svg"]`).boundingBox();
       assert.equal(box.width, size); assert.equal(box.height, size);
     }
@@ -962,7 +964,7 @@ test('View Cards follows empty hands, rematches and table privacy without carryi
   assert.equal(await page.locator('#game-dialog .card').count(), 0);
   assert.match(await page.locator('.hand-view-summary').innerText(), /0 cards/);
   room.round = 2; room.hand = [{ id: 'new-round-card', rank: 12, suit: 'C' }]; room.wildRank = 12; room.players[0].dropped = true; room.version++;
-  await page.waitForFunction(() => document.querySelector('.hand-view-summary')?.textContent.includes('ROUND 2'));
+  await page.waitForFunction(() => document.querySelector('.hand-view-summary')?.textContent.includes('Round 2'));
   assert.equal(await page.locator('#game-dialog .card').count(), 1);
   assert.equal(await page.locator('#game-dialog .card').getAttribute('aria-label'), 'Q clubs');
   assert.match(await page.locator('.hand-view-summary').innerText(), /Dropped/);
@@ -998,7 +1000,11 @@ test('confirmation, invitation and mobile guide dialogs have accessible headings
     assert.equal(await page.locator('#' + id).getAttribute('aria-labelledby'), heading);
   }
   assert.equal(await page.locator('#confirm-dialog').getAttribute('aria-describedby'), 'confirm-text');
+  // Invite content is rendered from the live table when the dialog opens.
+  await page.locator('.room-heading [data-action="invite"]').click();
   assert.equal(await page.locator('#invite-dialog .invite-steps > span').count(), 3);
+  await page.keyboard.press('Escape');
+  assert.equal(await page.locator('#invite-dialog').evaluate(d => d.open), false);
   assert.equal(await page.locator('#mobile-dialog .mobile-guide-quick > span').count(), 2);
   for (const id of ['confirm-dialog', 'invite-dialog', 'mobile-dialog']) {
     const width = await page.locator('#' + id).evaluate(el => {
@@ -1059,7 +1065,7 @@ for (const viewport of [{ width: 360, height: 800 }, { width: 768, height: 1024 
     assert.equal(await page.locator('[data-home-entry="join"]').isEnabled(), true);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     for (const img of await page.locator('.home-tabs img').all()) {
-      assert.equal(await img.evaluate(el => el.complete && el.naturalWidth > 0), true);
+      assert.equal(await img.evaluate(el => el.decode().then(() => el.naturalWidth > 0)), true);
     }
     await page.locator('[data-home-entry="join"]').click();
     await page.locator('#new-table-code').fill('DDDDDD123456');
@@ -1396,7 +1402,7 @@ for(const viewport of [{width:390,height:844},{width:768,height:1024},{width:192
     const result={winner:'me',winnerName:'Me',reason:'declaration',groups:[],scores:[{id:'me',name:'Me',penalty:0,total:15,hand:[]},{id:'other',name:'Friend',penalty:40,total:50,hand:[]}],pointsAward:{eligible:true,winner:'me',amount:100}};
     const {page,requests,errors}=await fixture(t,viewport,false,{status:'finished',result});
     await page.getByRole('region',{name:'Your round summary',exact:true}).waitFor();
-    assert.match(await page.locator('.personal-round').innerText(),/YOU WON THIS ROUND/);
+    assert.match(await page.locator('.personal-round').innerText(),/You won this round/);
     assert.match(await page.locator('.personal-round').innerText(),/Profile points earned\s*\+100/);
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
     await waitingScreenshot(page,`round-results-${viewport.width}`);
@@ -1405,7 +1411,9 @@ for(const viewport of [{width:390,height:844},{width:768,height:1024},{width:192
     await page.locator('[data-results-home]').click();await page.locator('.home-page').waitFor();
     await page.locator('[data-home-filter="finished"]').click();
     await page.locator('[data-switch-table="ABCDEF123456"]').click();
-    await page.locator('[data-action="start"]').click();await page.locator('[data-card="card-0"]').waitFor();
+    // Hand cards stay visible after a finished round, so wait for the results to clear instead.
+    await page.locator('[data-action="start"]').click();await page.locator('.personal-round').waitFor({state:'detached'});
+    await page.locator('[data-card="card-0"]').waitFor();
     assert.equal(await page.locator('.personal-round').count(),0);
     assert.deepEqual(requests.map(r=>r.action),['start']);assert.deepEqual(errors,[]);
   });
@@ -1715,7 +1723,7 @@ for(const viewport of [{width:320,height:760},{width:390,height:844},{width:844,
         const style=getComputedStyle(dialog),title=getComputedStyle(dialog.querySelector('#game-panel-title')),close=dialog.querySelector('.dialog-head [data-close]').getBoundingClientRect();
         return {background:style.backgroundColor,text:title.color,titleImage:title.backgroundImage,width:close.width,height:close.height,overflow:dialog.scrollWidth>dialog.clientWidth};
       });
-      assert.equal(metrics.background,'rgb(255, 255, 255)');assert.equal(metrics.text,'rgb(24, 56, 43)');assert.equal(metrics.titleImage,'none');assert.equal(metrics.width,44);assert.equal(metrics.height,44);assert.equal(metrics.overflow,false);
+      assert.equal(metrics.background,'rgb(255, 255, 255)');assert.equal(metrics.text,'rgb(14, 47, 53)');assert.equal(metrics.titleImage,'none');assert.equal(metrics.width,44);assert.equal(metrics.height,44);assert.equal(metrics.overflow,false);
       assert.equal(await page.getByRole('button',{name:'Close table panel',exact:true}).textContent(),'×');
       await waitingScreenshot(page,`consistent-${name.toLowerCase().replaceAll(' ','-')}-${viewport.width}`);
       await close(page);

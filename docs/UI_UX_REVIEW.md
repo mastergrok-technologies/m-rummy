@@ -50,3 +50,9 @@ The shared stylesheet is served by the local PHP router, shipped in both release
 - Browser regressions and visual screenshots remain unrun because Chromium cannot launch in this workspace. The next acceptance check should cover actual phone landscape/portrait, long names/messages, keyboard/screen-reader use and multi-device play. Automated tests remain disabled in GitHub Actions as requested; syntax checks, packaging and deployment checks remain.
 
 Remaining structural debt: legacy screen styling is still present beneath the shared foundation. It can be removed incrementally after browser comparisons confirm each old selector is no longer needed. Music remains explicitly unavailable; this pass does not introduce an unsupported control or service.
+
+## Redesign (November 2026)
+
+The application was redesigned on top of the same markup and DOM contracts: peacock-teal and marigold palette, self-hosted Rozha One and Onest fonts, sentence-case labels, a night theme for every table page and a docked hand during play. See the "Shared visual foundation" section in [frontend-modules.md](frontend-modules.md) for structure and responsive rules.
+
+The Playwright browser suite now runs locally (Playwright 1.56.1 with `CHROMIUM_PATH` pointing at an installed Chrome). All 118 browser tests pass. The redesign also fixed two behaviour bugs found by that suite: the declaration guide and "Back to retry" buttons inside the table dialog did nothing, and every table update made the page jump while the joined-table switcher re-rendered. Several stale assertions from the previous pass were corrected.
