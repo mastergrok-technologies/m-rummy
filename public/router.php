@@ -10,7 +10,7 @@ if (preg_match('#^/api/([a-z]+)$#', $path, $matches)) {
 if ($path === '/') { readfile(__DIR__ . '/index.html'); return true; }
 // UI modules and source artwork are shipped static files. Restrict the path and
 // extension rather than letting the development server expose arbitrary files.
-if (preg_match('#^/(?:ui/(?:[a-z0-9-]+/)*[a-z0-9-]+\.js|assets/figma/(?:[a-z0-9-]+/)*[a-z0-9-]+\.(?:png|svg))$#D', $path)
+if (preg_match('#^/(?:ui/(?:[a-z0-9-]+/)*[a-z0-9-]+\.js|assets/figma/(?:[a-z0-9-]+/)*[a-z0-9-]+\.(?:png|svg)|fonts/[a-z0-9-]+\.woff2)$#D', $path)
     && is_file(__DIR__ . $path)
     && str_starts_with(realpath(__DIR__ . $path), __DIR__ . '/')) return false;
 if (in_array($path, ['/index.html', '/app.js', '/board-state.js', '/tutorial.js', '/style.css', '/design-system.css', '/favicon.svg', '/manifest.webmanifest', '/sw.js', '/offline.html', '/offline.js', '/icons/icon-192.png', '/icons/icon-512.png', '/icons/apple-touch-icon.png'], true)) return false;
